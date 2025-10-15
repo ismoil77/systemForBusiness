@@ -1,0 +1,473 @@
+/* === СБРОС И БАЗОВЫЕ СТИЛИ === */
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+:root {
+	--primary: #4361ee;
+	--primary-dark: #3a56d4;
+	--success: #06d6a0;
+	--danger: #ef476f;
+	--warning: #ffd166;
+	--light: #f8f9fa;
+	--dark: #212529;
+	--gray: #6c757d;
+	--border: #dee2e6;
+	--shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+	--radius: 12px;
+	--transition: all 0.3s ease;
+}
+
+body {
+	font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+	background: linear-gradient(135deg, #f5f7fa 0%, #e4edf9 100%);
+	color: var(--dark);
+	line-height: 1.6;
+	padding: 16px;
+	min-height: 100vh;
+}
+
+/* === КОНТЕЙНЕР === */
+.container {
+	max-width: 1400px;
+	margin: 0 auto 24px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	align-items: center;
+	background: white;
+	padding: 20px;
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+/* === ЗАГОЛОВОК === */
+.dataToday {
+	font-size: 1.4rem;
+	font-weight: 700;
+	color: var(--primary);
+	flex: 1;
+	min-width: 200px;
+	text-align: center;
+}
+
+/* === ПОИСК === */
+.searchClient {
+	flex: 1;
+	min-width: 250px;
+	padding: 12px 16px;
+	border: 2px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 1rem;
+	transition: var(--transition);
+}
+
+.searchClient:focus {
+	border-color: var(--primary);
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+
+/* === КНОПКИ === */
+.btn {
+	padding: 10px 20px;
+	border: none;
+	border-radius: var(--radius);
+	font-weight: 600;
+	font-size: 1rem;
+	cursor: pointer;
+	transition: var(--transition);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+.btn:hover {
+	opacity: 0.95;
+	transform: translateY(-2px);
+}
+
+.btn:active {
+	transform: translateY(0);
+}
+
+.info-btn {
+	background: var(--primary);
+	color: white;
+}
+
+.edit-btn {
+	background: var(--warning);
+	color: var(--dark);
+}
+
+.delete-btn {
+	background: var(--danger);
+	color: white;
+}
+
+.print-btn, #createInvoiceBtn, #viewInvoicesBtn, #openActivityLog {
+	background: var(--gray);
+	color: white;
+}
+
+/* === ТАБЛИЦА === */
+table {
+	width: 100%;
+	border-collapse: collapse;
+	background: white;
+	border-radius: var(--radius);
+	overflow: hidden;
+	box-shadow: var(--shadow);
+	margin-top: 16px;
+}
+
+th,
+td {
+	padding: 16px;
+	text-align: left;
+	border-bottom: 1px solid var(--border);
+}
+
+th {
+	background: var(--primary);
+	color: white;
+	font-weight: 600;
+	position: sticky;
+	top: 0;
+}
+
+/* Зебра-строки */
+tbody tr:nth-child(even) {
+	background-color: #f8fafc;
+}
+
+tbody tr:hover {
+	background-color: #edf2ff !important;
+}
+
+/* === ДИАЛОГИ === */
+dialog {
+	border: none;
+	border-radius: var(--radius);
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+	padding: 24px;
+	max-width: 95%;
+	width: 600px;
+	max-height: 90vh;
+	overflow-y: auto;
+}
+
+dialog::backdrop {
+	background: rgba(0, 0, 0, 0.4);
+}
+
+/* === ФОРМЫ === */
+form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+form input,
+form select {
+	padding: 12px 16px;
+	border: 2px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 1rem;
+	transition: var(--transition);
+}
+
+form input:focus,
+form select:focus {
+	border-color: var(--primary);
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+
+/* === ПОЛЕ ВВОДА ТЕЛЕФОНА === */
+input[type="tel"] {
+	direction: ltr;
+}
+
+/* === ОФЛАЙН ПРЕДУПРЕЖДЕНИЕ === */
+.offline-warning {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(239, 71, 111, 0.95);
+	color: white;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	z-index: 9999;
+	font-size: 1.5rem;
+	font-weight: bold;
+	text-align: center;
+	padding: 20px;
+	display: none;
+}
+
+/* === ЖУРНАЛ ДЕЙСТВИЙ === */
+.log-entry {
+	padding: 12px 0;
+	border-bottom: 1px solid var(--border);
+	font-size: 0.95rem;
+}
+
+.log-entry time {
+	color: var(--primary);
+	font-weight: 600;
+}
+
+.log-date-group h3 {
+	color: var(--primary);
+	margin: 20px 0 12px;
+	font-size: 1.3rem;
+}
+
+/* === НАКЛАДНЫЕ === */
+.invoice-dialog {
+	max-width: 95%;
+	width: 800px;
+}
+
+.invoice-item {
+	display: flex;
+	gap: 12px;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
+}
+
+.invoice-item input {
+	flex: 1;
+	min-width: 120px;
+	padding: 10px 12px;
+	border: 2px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 1rem;
+}
+
+/* === АДАПТИВНОСТЬ === */
+
+/* Планшеты и мобильные */
+@media (max-width: 768px) {
+	.container {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	
+	.dataToday {
+		text-align: left;
+	}
+	
+	.searchClient {
+		min-width: auto;
+	}
+	
+	table {
+		font-size: 0.85rem;
+	}
+	
+	th, td {
+		padding: 12px 8px;
+	}
+	
+	.btn {
+		padding: 10px 16px;
+		font-size: 0.95rem;
+	}
+	
+	dialog {
+		width: 95%;
+		padding: 20px;
+	}
+	
+	.invoice-item {
+		flex-direction: column;
+	}
+}
+
+/* Маленькие мобильные */
+@media (max-width: 480px) {
+	body {
+		padding: 12px;
+	}
+	
+	.container {
+		padding: 16px;
+	}
+	
+	table {
+		font-size: 0.8rem;
+	}
+	
+	th, td {
+		padding: 10px 6px;
+	}
+	
+	.btn {
+		width: 100%;
+		justify-content: center;
+	}
+	
+	/* Скрываем некоторые столбцы на мобильных */
+	@media (max-width: 480px) {
+		td:nth-child(4), th:nth-child(4) {
+			display: none;
+		}
+	}
+}
+
+/* === АНИМАЦИИ ЗАГРУЗКИ === */
+.loading-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	z-index: 10000;
+	color: white;
+	font-size: 1.3rem;
+}
+
+.spinner {
+	width: 50px;
+	height: 50px;
+	border: 4px solid rgba(255, 255, 255, 0.3);
+	border-top: 4px solid white;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin-bottom: 20px;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* === ПЕЧАТЬ === */
+@media print {
+	body {
+		background: white;
+		padding: 0;
+	}
+	
+	.container,
+	.offline-warning,
+	.no-print {
+		display: none !important;
+	}
+	
+	table {
+		box-shadow: none;
+		border: 1px solid #000;
+	}
+	
+	th {
+		background: #f2f2f2 !important;
+		color: #000 !important;
+	}
+}
+
+
+.dialogInfo input {
+	width: 100%;
+	padding: 12px;
+	margin: 8px 0;
+	border: 2px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 1rem;
+}
+.form-input {
+	width: 100%;
+	padding: 12px;
+	margin: 8px 0;
+	border: 2px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 1rem;
+	transition: var(--transition);
+}
+
+.form-input:focus {
+	border-color: var(--primary);
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+/* В style.css */
+#activityLogContent table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 10px 0;
+}
+
+#activityLogContent th,
+#activityLogContent td {
+	padding: 10px;
+	border: 1px solid var(--border);
+	text-align: left;
+}
+
+#activityLogContent th {
+	background-color: #f8f9fa;
+	font-weight: 600;
+}
+/* === КРАСИВЫЕ СЕЛЕКТЫ === */
+select {
+	/* Сброс стилей браузера */
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	
+	/* Основные стили */
+	width: 100%;
+	padding: 12px 16px;
+	border: 2px solid var(--border);
+	border-radius: var(--radius);
+	background-color: white;
+	font-size: 1rem;
+	color: var(--dark);
+	cursor: pointer;
+	transition: var(--transition);
+	background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+	background-repeat: no-repeat;
+	background-position: right 12px center;
+	background-size: 16px 12px;
+	padding-right: 40px; /* место для стрелки */
+}
+
+select:focus {
+	border-color: var(--primary);
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+
+select:hover {
+	border-color: #a0a7b3;
+}
+
+/* Стили для опций (ограничены браузером, но базовые работают) */
+select option {
+	padding: 8px 12px;
+	font-size: 1rem;
+	color: var(--dark);
+	background-color: white;
+}
+
+/* Для Firefox */
+@-moz-document url-prefix() {
+	select {
+		padding-right: 16px; /* Firefox не поддерживает кастомную стрелку */
+	}
+}
