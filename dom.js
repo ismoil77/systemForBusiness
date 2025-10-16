@@ -3,9 +3,10 @@
 // === ИМПОРТЫ ===
 import { deleteData, getData, logActivity, postData, putData } from './api.js';
 let fullClientList = [];
-
+let allInvoicesMap = new Map(); // id → invoice
 // Текущий отображаемый список (может быть отфильтрован)
 let currentClientList = [];
+let originalClientRecords = []; // в начало dom.js
 // === УПРАВЛЕНИЕ ЗАГРУЗКОЙ ===
 const loadingOverlay = document.getElementById('loading-overlay');
 
@@ -763,44 +764,44 @@ saveInvoiceBtn?.addEventListener('click', async () => {
 
 	showLoading();
 	try {
-		// Получаем существующие накладные клиента
-		const invoiceResponse = await fetch(`https://88e71e2fe0599b7e.mokky.dev/invoice?clientId=${clientId}`);
-		let clientInvoices = await invoiceResponse.json();
-
-		// Генерация номера
-		const now = new Date();
-		const datePart = invoiceDate.replace(/-/g, ''); // Используем выбранную дату!
+		// Генерация номера и ID накладной
+		const now = Date.now();
+		const datePart = invoiceDate.replace(/-/g, '');
 		const randomPart = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
 		const invoiceNumber = `INV-${datePart}-${randomPart}`;
 
 		const newInvoice = {
+			id: `inv_${now}`, // уникальный ID
 			invoiceNumber,
 			items,
 			totalAmount: items.reduce((sum, item) => sum + item.total, 0),
-			createdAt: new Date(invoiceDate).toISOString() // ← Дата из формы!
+			createdAt: new Date(invoiceDate).toISOString()
 		};
 
-		if (clientInvoices.length > 0) {
-			const existing = clientInvoices[0];
-			if (!Array.isArray(existing.invoices)) existing.invoices = [];
-			
-			// Обязательно сохраняем clientName!
-			existing.clientName = client.client;
-			existing.clientId = client.id;
-			existing.invoices.push(newInvoice);
+		// 1. Получаем существующие накладные клиента
+		const response = await fetch(`https://7cf074eeac80e141.mokky.dev/invoice?clientId=${clientId}`);
+		const clientInvoices = await response.json();
 
-			await fetch(`https://88e71e2fe0599b7e.mokky.dev/invoice/${existing.id}`, {
+		if (clientInvoices.length > 0) {
+			// 2. Обновляем существующую запись
+			const existing = clientInvoices[0];
+			existing.invoices.push(newInvoice);
+			existing.clientName = client.client; // обновляем имя на случай изменения
+
+			await fetch(`https://7cf074eeac80e141.mokky.dev/invoice/${existing.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(existing)
 			});
 		} else {
+			// 3. Создаём новую запись
 			const newRecord = {
+				id: clientId, // ← ID совпадает с clientId!
 				clientId: client.id,
-				clientName: client.client, // ← ОБЯЗАТЕЛЬНО!
+				clientName: client.client,
 				invoices: [newInvoice]
 			};
-			await fetch('https://88e71e2fe0599b7e.mokky.dev/invoice', {
+			await fetch('https://7cf074eeac80e141.mokky.dev/invoice', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(newRecord)
@@ -810,8 +811,8 @@ saveInvoiceBtn?.addEventListener('click', async () => {
 		alert(`Накладная ${invoiceNumber} сохранена!`);
 		invoiceDialog.close();
 	} catch (err) {
-		alert('Ошибка сохранения накладной');
-		console.error(err);
+		console.error('Ошибка сохранения:', err);
+		alert('Не удалось сохранить накладную');
 	} finally {
 		hideLoading();
 	}
@@ -899,70 +900,255 @@ function updateInvoicePreview() {
 	invoicePreview.style.display = 'block';
 }
 // === ПРОСМОТР НАКЛАДНЫХ ===
+// === ПРОСМОТР НАКЛАДНЫХ С ПОИСКОМ ===
 const viewInvoicesBtn = document.getElementById('viewInvoicesBtn');
 const invoicesViewDialog = document.getElementById('invoicesViewDialog');
 const closeInvoicesView = document.getElementById('closeInvoicesView');
 const invoicesList = document.getElementById('invoicesList');
+let allInvoicesData = []; // глобальное хранилище для поиска
 
 viewInvoicesBtn?.addEventListener('click', async () => {
 	showLoading();
 	try {
-		const response = await fetch('https://88e71e2fe0599b7e.mokky.dev/invoice');
-		const data = await response.json();
-
-		let html = '';
-		data.forEach(clientRecord => {
-			html += `<h3>${clientRecord.clientName} (ID: ${clientRecord.clientId})</h3>`;
-			html += `<div class="client-invoices">`;
-			
-			// Сортируем накладные по дате (новые сверху)
-			const sortedInvoices = [...clientRecord.invoices].sort(
-				(a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-			);
-
-			sortedInvoices.forEach(inv => {
-				const date = new Date(inv.createdAt).toLocaleDateString('ru-RU');
-				html += `
-					<div class="invoice-item-preview">
-						<strong>${inv.invoiceNumber}</strong> от ${date} — ${inv.totalAmount.toFixed(2)} сомони
-						<button class="btn info-btn print-invoice-btn" data-invoice='${JSON.stringify(inv).replace(/'/g, "&#39;")}'>🖨 Печать</button>
-					</div>
-				`;
-			});
-			html += `</div><hr>`;
-		});
-
-		if (data.length === 0) {
-			html = '<p>Нет сохранённых накладных</p>';
-		}
-
-		invoicesList.innerHTML = html;
+		const response = await fetch('https://7cf074eeac80e141.mokky.dev/invoice');
+		const clientRecords = await response.json(); // ← локальная переменная
+		originalClientRecords = clientRecords; 
+		renderInvoicesList(clientRecords); // ← передаём как параметр
 		invoicesViewDialog.showModal();
-
-		// Обработчик печати
-		document.querySelectorAll('.print-invoice-btn').forEach(btn => {
-			btn.addEventListener('click', () => {
-				const invoice = JSON.parse(btn.dataset.invoice.replace(/&#39;/g, "'"));
-				printInvoice(invoice);
-			});
-		});
 	} catch (err) {
-		alert('Ошибка загрузки накладных');
+		console.error('Ошибка загрузки накладных:', err);
+		alert('Не удалось загрузить накладные');
 	} finally {
 		hideLoading();
 	}
 });
+// Новая функция отрисовки
+// === ФУНКЦИЯ ОТРИСОВКИ НАКЛАДНЫХ ===
+function renderInvoicesList(clientRecords) { // ← ПРИНИМАЕТ ДАННЫЕ КАК ПАРАМЕТР
+	let html = '';
+	
+	// Защита от некорректных данных
+	if (!Array.isArray(clientRecords)) {
+		html = '<p>Ошибка: данные повреждены</p>';
+		invoicesList.innerHTML = html;
+		return;
+	}
 
-closeInvoicesView?.addEventListener('click', () => {
-	invoicesViewDialog.close();
+	clientRecords.forEach(record => { // ← record определён здесь
+		html += `<h3>${record.clientName || 'Неизвестен'} (ID: ${record.clientId || '—'})</h3>`;
+		html += `<div class="client-invoices">`;
+		
+		// Защита от отсутствующего invoices
+		const invoicesArray = Array.isArray(record.invoices) ? record.invoices : [];
+		const sortedInvoices = [...invoicesArray].sort(
+			(a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+		);
+
+		sortedInvoices.forEach(inv => {
+			const date = new Date(inv.createdAt).toLocaleDateString('ru-RU');
+			const total = (inv.totalAmount || 0).toFixed(2);
+			const items = (inv.items || []).map(i => i.name || '—').join(', ');
+			
+			html += `
+				<div class="invoice-item-preview" 
+				     data-invoice="${encodeURIComponent(JSON.stringify(inv))}"
+				     data-client-id="${record.clientId || ''}"
+				     data-record-id="${record.id || ''}"
+				     data-invoice-id="${inv.id || ''}">
+					<strong>${inv.invoiceNumber || 'Без номера'}</strong> от ${date} — ${total} сомони
+					<br><small>Товары: ${items}</small>
+					<br>
+					<button class="btn info-btn print-invoice-btn">🖨 Печать</button>
+					<button class="btn warning-btn download-invoice-btn">💾 Скачать</button>
+					<button class="btn delete-btn delete-invoice-btn">🗑 Удалить</button>
+				</div>
+			`;
+		});
+		html += `</div><hr>`;
+	});
+
+	if (clientRecords.length === 0) {
+		html = '<p>Нет сохранённых накладных</p>';
+	}
+
+	invoicesList.innerHTML = html;
+
+	// Подключаем обработчики
+	document.querySelectorAll('.print-invoice-btn').forEach(btn => {
+		btn.addEventListener('click', (e) => {
+			const invoiceDiv = e.target.closest('.invoice-item-preview');
+			const invoice = JSON.parse(decodeURIComponent(invoiceDiv.dataset.invoice));
+			const clientId = invoiceDiv.dataset.clientId;
+			const client = fullClientList.find(c => c.id === clientId);
+			printInvoice(invoice, client?.client || 'Не указан');
+		});
+	});
+
+document.querySelectorAll('.download-invoice-btn').forEach(btn => {
+	btn.addEventListener('click', async (e) => {
+		const invoiceDiv = e.target.closest('.invoice-item-preview');
+		const invoice = JSON.parse(decodeURIComponent(invoiceDiv.dataset.invoice));
+		const clientId = invoiceDiv.dataset.clientId;
+		const client = fullClientList.find(c => c.id === clientId);
+		const clientName = client?.client || 'Не указан';
+
+		// Создаём временный элемент для PDF
+		const pdfElement = document.createElement('div');
+		pdfElement.innerHTML = `
+			<div id="pdf-invoice" style="padding: 20px; font-family: Arial, sans-serif; max-width: 800px;">
+				<h2 style="text-align: center; margin-bottom: 20px;">НАКЛАДНАЯ</h2>
+				<div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+					<div><strong>Номер:</strong> ${invoice.invoiceNumber || '—'}</div>
+					<div><strong>Дата:</strong> ${new Date(invoice.createdAt).toLocaleDateString('ru-RU')}</div>
+				</div>
+				<div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+					<div><strong>Компания:</strong> M.M.C +992 988-66-77-75 </div>
+					<div><strong>Клиент:</strong> ${clientName}</div>
+				</div>
+				<table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+					<thead>
+						<tr>
+							<th style="border: 1px solid #000; padding: 8px; background: #f0f0f0;color:black;">Товар</th>
+							<th style="border: 1px solid #000; padding: 8px; background: #f0f0f0;color:black;">Кол-во</th>
+							<th style="border: 1px solid #000; padding: 8px; background: #f0f0f0;color:black;">Цена</th>
+							<th style="border: 1px solid #000; padding: 8px; background: #f0f0f0;color:black;">Сумма</th>
+						</tr>
+					</thead>
+					<tbody>
+						${(invoice.items || []).map(item => `
+							<tr>
+								<td style="border: 1px solid #000; padding: 8px;">${item.name || '—'}</td>
+								<td style="border: 1px solid #000; padding: 8px;">${item.quantity || 0}</td>
+								<td style="border: 1px solid #000; padding: 8px;">${(item.price || 0).toFixed(2)}</td>
+								<td style="border: 1px solid #000; padding: 8px;">${(item.total || 0).toFixed(2)}</td>
+							</tr>
+						`).join('')}
+					</tbody>
+				</table>
+				<div style="text-align: right; font-weight: bold; font-size: 18px; margin-top: 10px;">
+					Итого: ${(invoice.totalAmount || 0).toFixed(2)} сомони
+				</div>
+				<div style="margin-top: 30px; display: flex; justify-content: space-between;">
+					<div style="text-align: center;">
+						<div>Подпись клиента</div>
+						<div style="width: 200px; border-top: 1px solid #000; margin: 5px auto;"></div>
+					</div>
+					<div style="text-align: center;">
+						<img src="./ПОДПИСЬ_ИСМИОЛ-removebg-preview.png" alt="Логотип" style="height: 80px;width:80px; margin-bottom: 10px;"/>
+						<div style="width: 200px; border-top: 1px solid #000; margin: 5px auto;"></div>
+					</div>
+				</div>
+			</div>
+		`;
+
+		// Добавляем во временное DOM
+		document.body.appendChild(pdfElement);
+
+		try {
+			// Генерируем PDF
+			const canvas = await html2canvas(pdfElement.querySelector('#pdf-invoice'));
+			const imgData = canvas.toDataURL('image/png');
+			const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+			const imgWidth = 210; // A4 width in mm
+			const pageHeight = 297; // A4 height in mm
+			const imgHeight = (canvas.height * imgWidth) / canvas.width;
+			let heightLeft = imgHeight;
+			let position = 0;
+
+			pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+			heightLeft -= pageHeight;
+
+			while (heightLeft >= 0) {
+				position = heightLeft - imgHeight;
+				pdf.addPage();
+				pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+				heightLeft -= pageHeight;
+			}
+
+			// Скачиваем
+			pdf.save(`${clientName+" "+new Date(invoice.createdAt).toLocaleDateString('ru-RU')+" "+invoice.invoiceNumber || 'nakladnaya'}.pdf`);
+		} catch (err) {
+			console.error('Ошибка генерации PDF:', err);
+			alert('Не удалось создать PDF');
+		} finally {
+			// Удаляем временный элемент
+			document.body.removeChild(pdfElement);
+		}
+	});
 });
 
+	document.querySelectorAll('.delete-invoice-btn').forEach(btn => {
+			btn.addEventListener('click', async (e) => {
+				if (!confirm('Удалить накладную?')) return;
+				
+				const invoiceDiv = e.target.closest('.invoice-item-preview');
+				const invoiceId = invoiceDiv.dataset.invoiceId;
+				const recordId = invoiceDiv.dataset.recordId;
+				
+				// Получаем текущую запись
+				const response = await fetch(`https://7cf074eeac80e141.mokky.dev/invoice/${recordId}`);
+				const record = await response.json();
+				
+				// Удаляем накладную из массива
+				record.invoices = record.invoices.filter(inv => inv.id !== invoiceId);
+				
+				// Если накладных не осталось — удаляем всю запись
+				if (record.invoices.length === 0) {
+					await fetch(`https://7cf074eeac80e141.mokky.dev/invoice/${recordId}`, {
+						method: 'DELETE'
+					});
+				} else {
+					await fetch(`https://7cf074eeac80e141.mokky.dev/invoice/${recordId}`, {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(record)
+					});
+				}
+				
+				alert('Накладная удалена');
+				invoicesViewDialog.close();
+				viewInvoicesBtn.click(); // обновляем список
+			});
+		});
+}
+
+// === ПОИСК ПО НАКЛАДНЫМ ===
+document.getElementById('invoiceSearch')?.addEventListener('input', (e) => {
+	const searchTerm = e.target.value.trim().toLowerCase();
+	
+	if (searchTerm === '') {
+		// Нужно хранить оригинальные данные!
+		// Добавь глобальную переменную:
+		// let originalClientRecords = [];
+		
+		renderInvoicesList(originalClientRecords);
+		return;
+	}
+
+	const filtered = originalClientRecords.map(record => {
+		const filteredInvoices = (record.invoices || []).filter(inv => 
+			(inv.invoiceNumber || '').toLowerCase().includes(searchTerm) ||
+			(record.clientName || '').toLowerCase().includes(searchTerm) ||
+			(inv.items || []).some(item => 
+				(item.name || '').toLowerCase().includes(searchTerm)
+			)
+		);
+		return { ...record, invoices: filteredInvoices };
+	}).filter(record => (record.invoices || []).length > 0);
+
+	renderInvoicesList(filtered);
+});
+closeInvoicesView?.addEventListener('click', () => {
+	invoicesViewDialog.close();
+	document.getElementById('invoiceSearch').value = ''; // сброс поиска
+});
 // Функция печати накладной
 // Функция печати накладной (красивая версия)
-function printInvoice(invoice) {
+function printInvoice(invoice, clientName) {
 	// Форматируем дату
 	const invoiceDate = new Date(invoice.createdAt);
-	
+
+	const totalAmount = invoice.totalAmount || 0;
 const formattedDate = invoice.createdAt 
 	? new Date(invoice.createdAt).toISOString().split('T')[0] 
 	: new Date().toISOString().split('T')[0];
@@ -1079,11 +1265,11 @@ const formattedDate = invoice.createdAt
 			<div class="details">
 				<div>
 					<label>Компания:</label>
-					<input type="text" value="M.M.C" readonly>
+					<input type="text" value="M.M.C +992 988-66-77-75" readonly>
 				</div>
 				<div>
 					<label>Клиент:</label>
-					<input type="text" value="${invoice.clientName || 'Не указан'}" readonly>
+				<input type="text" value="${clientName}" readonly>
 				</div>
 			</div>
 
@@ -1111,7 +1297,8 @@ const formattedDate = invoice.createdAt
 					Подпись клиента: <span></span>
 				</div>
 				<div>
-					Подпись: <span></span>
+				
+					Подпись: <img src="./ПОДПИСЬ_ИСМИОЛ-removebg-preview.png" alt="Logo" style="height: 60px;width:60px; margin-bottom: 5px;"/><span></span>
 				</div>
 			</div>
 

@@ -161,6 +161,8 @@
 <dialog id="invoicesViewDialog" class="invoice-dialog">
 	<button class="btn delete-btn" id="closeInvoicesView">Закрыть</button>
 	<h2>Сохранённые накладные</h2>
+	<!-- Поле поиска накладных -->
+<input type="text" id="invoiceSearch" placeholder="Поиск по номеру, клиенту или товару..." class="form-input" style="margin-bottom: 15px; width: 100%;">
 	<div id="invoicesList"></div>
 </dialog>
 <div id="loading-overlay" class="loading-overlay" style="display: none;">
@@ -168,6 +170,9 @@
 	<p>Загрузка...</p>
 </div>
 
+<!-- PDF библиотеки -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 	<script type="module" src="./main.js"></script>
 </body>
 </html>
