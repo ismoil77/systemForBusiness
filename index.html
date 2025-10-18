@@ -1,178 +1,257 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Система управления клиентами</title>
-	<link rel="stylesheet" href="./style.css">
-</head>
-<body>
-	<!-- Предупреждение об отсутствии интернета -->
-	<div id="offline-warning" class="offline-warning">
-		Нет подключения к интернету. Функции заблокированы.
-	</div>
-
-	<!-- Поиск и управление -->
-	<div class="container">
-		<button class="btn " id="openActivityLog">📒 Журнал действий</button>
-		<select class="odam">
-			<option value="Dilobar">Dilobar Qurbanova</option>
-			<option value="Murodullo">Murodullo Mamatkulov</option>
-		</select>
-		<h1 class="dataToday"></h1>
-		<input type="search" class="searchClient" placeholder="Поиск клиента...">
-		<button class="addBtnClient btn info-btn">+ Добавить клиента</button>
-		<button class='btn print-btn'>🖨 Печать</button>	
-		<button class="btn info-btn" id="createInvoiceBtn">📄 Создать накладную</button>
-		<button class="btn info-btn" id="viewInvoicesBtn">🧾 Мои накладные</button>
-	</div>
-
-	<!-- Таблица клиентов -->
-	<table id="clients-table">
-		<thead>
-			<tr>
-				<th>№</th>
-				<th>Клиент (Телефон)</th>
-				<th class="allCredit">Долг</th>
-				<th>Место</th>
-				<th class='no-print'>Действия</th>
-			</tr>
-		</thead>
-		<tbody class="box"></tbody>
-	</table>
-
-	<!-- Редактирование клиента -->
-	<dialog class="editClientDialog">
-		<button class="editClientDialogClose btn delete-btn">Закрыть</button>
-		<form class="editClientForm">
-			<input type="text" name="client" placeholder="Имя клиента" required>
-			<select name="place" required>
-				<option value="">Выберите место</option>
-				<option value="Садбарг">Садбарг</option>
-				<option value="Жд-вокзал">Жд Вокзал</option>
-				<option value="Авто-база">Авто База</option>
-				<option value="Фаравон">Фаравон</option>
-				<option value="Мехргон">Мехргон</option>
-			</select>
-			<!-- Поле телефона (теперь просто строка) -->
-			<input type="tel" name="phoneNumber" placeholder="Телефон (например, +992991234567)" required>
-			<button type="submit" class="btn info-btn">Сохранить</button>
-		</form>
-	</dialog>
-
-	<!-- Информация о клиенте -->
-	<dialog class="dialogInfo">
-		<button class="dialogInfoClose btn delete-btn">Закрыть</button><br>
-		<label class="dataToday22"></label><br>
-		<label class="placeInfo"></label><br>
-		<label class="clientInfo"></label><br>
-		<label class="creditInfo"></label><br>
-
-		<input type="text" class="qarzNimaInfo form-input" placeholder="Что купил" required>
-		<input type="text" class="qarzNechiInfo form-input" placeholder="количество" required>
-		<input type="text" class="qarzNarkhInfo form-input" placeholder="нархи" required>
-		<input type="date" class="addDolgDate form-input">
-
-		<button class="plusBtnInfo btn info-btn">Добавить долг</button><br><br><br><br><br>
-
-		<h1>Выручка</h1><br>
-		<input type="number" class="minusInfo" placeholder="Списать долг" min="0">
-		<input type="date" class="spisatDolgDate">
-		<select class="sposobInfo" required>
-			<option value="">Способ оплаты</option>
-			<option value="Dushanbe Cити">Dushanbe Cити</option>
-			<option value="Наличи Пул">НАЛИЧНЫЙ ПУЛ</option>
-			<option value="Alif">ALIF MOBI</option>
-			<option value="AMONAT">AMONAT BANK</option>
-		</select>
-		<button class="minusBtnInfo btn info-btn">Списать</button><br>
-		<label class="pulInfo"></label>
-	</dialog>
-
-	<!-- Добавление клиента -->
-	<dialog class="addDialog">
-		<button class="addDialogClose btn delete-btn">Закрыть</button>
-		<form class="formAdd">
-			<input type="text" name="client" placeholder="Имя клиента" required>
-			<select name="place" required>
-				<option value="">Выберите место</option>
-				<option value="Садбарг">Садбарг</option>
-				<option value="Жд-Вокзал">Жд Вокзал</option>
-				<option value="Авто-База">Авто База</option>
-				<option value="Фаравон">Фаравон</option>
-				<option value="Мехргон">Мехргон</option>
-				<option value="Памир">Памир</option>
-				<option value="Сари-Осиё">Сари Осиё</option>
-			</select>
-			<!-- Поле телефона (без оператора!) -->
-			<input type="tel" name="phoneNumber" placeholder="Телефон (например, +992991234567)" required>
-			<button type="submit" class="btn info-btn">Добавить</button>
-		</form>
-	</dialog>
-<!-- Журнал действий -->
-<dialog id="activityLogDialog" class="activity-log-dialog">
-	<button class="btn delete-btn" id="closeActivityLog">Закрыть</button>
-	<h2>Журнал действий</h2>
-	
-	<div class="log-filters">
-		<button class="btn info-btn" data-date="today">Сегодня</button>
-		<button class="btn info-btn" data-date="yesterday">Вчера</button>
-		<button class="btn info-btn" data-date="all">Все</button>
-		<input type="date" id="customLogDate" class="log-date-input">
-	</div>
-
-	<div id="activityLogContent" style="margin-top: 15px; max-height: 400px; overflow-y: auto;">
-		<!-- Сюда подгружается журнал -->
-	</div>
-</dialog>
-<!-- Диалог создания накладной -->
-<dialog id="invoiceDialog" class="invoice-dialog">
-	<button class="btn delete-btn" id="closeInvoiceDialog">Закрыть</button>
-	<h2>Создать накладную</h2>
-
-	<!-- Выбор клиента -->
-	<label>Клиент:</label>
-	<select id="invoiceClient" required>
-		<option value="">Выберите клиента</option>
-		<!-- Заполняется динамически -->
-	</select>
-<label>Дата накладной:</label>
-<input type="date" id="invoiceDate" required>
-	<!-- Товары -->
-	<div id="invoiceItems">
-		<div class="invoice-item">
-			<input type="text" class="item-name form-input" placeholder="Товар" required>
-			<input type="number" class="item-qty form-input" placeholder="Кол-во" min="1" value="1" required>
-			<input type="number" class="item-price form-input" placeholder="Цена" min="0" step="0.01" required>
-			<button type="button" class="btn delete-btn remove-item">Удалить</button>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Система управления клиентами</title>
+		<link rel="stylesheet" href="./style.css" />
+	</head>
+	<body>
+		<!-- Предупреждение об отсутствии интернета -->
+		<div id="offline-warning" class="offline-warning">
+			Нет подключения к интернету. Функции заблокированы.
 		</div>
-	</div>
 
-	<button type="button" id="addItemBtn" class="btn info-btn">+ Добавить товар</button>
-	<button type="button" id="saveInvoiceBtn" class="btn info-btn">💾 Сохранить накладную</button>
+		<!-- Поиск и управление -->
+		<div class="container">
+			<button class="btn" id="openActivityLog">📒 Журнал действий</button>
+			<select class="odam">
+				<option value="Dilobar">Dilobar Qurbanova</option>
+				<option value="Murodullo">Murodullo Mamatkulov</option>
+			</select>
+			<h1 class="dataToday"></h1>
+			<input
+				type="search"
+				class="searchClient"
+				placeholder="Поиск клиента..."
+			/>
+			<button class="addBtnClient btn info-btn">+ Добавить клиента</button>
+			<button class="btn print-btn">🖨 Печать</button>
+			<button class="btn info-btn" id="createInvoiceBtn">
+				📄 Создать накладную
+			</button>
+			<button class="btn info-btn" id="viewInvoicesBtn">
+				🧾 Мои накладные
+			</button>
+		</div>
 
-	<!-- Предпросмотр -->
-	<div id="invoicePreview" style="margin-top: 20px; display: none;">
-		<h3>Предпросмотр</h3>
-		<div id="previewContent"></div>
-	</div>
-</dialog>
-<!-- Диалог просмотра накладных -->
-<dialog id="invoicesViewDialog" class="invoice-dialog">
-	<button class="btn delete-btn" id="closeInvoicesView">Закрыть</button>
-	<h2>Сохранённые накладные</h2>
-	<!-- Поле поиска накладных -->
-<input type="text" id="invoiceSearch" placeholder="Поиск по номеру, клиенту или товару..." class="form-input" style="margin-bottom: 15px; width: 100%;">
-	<div id="invoicesList"></div>
-</dialog>
-<div id="loading-overlay" class="loading-overlay" style="display: none;">
-	<div class="spinner"></div>
-	<p>Загрузка...</p>
-</div>
+		<!-- Таблица клиентов -->
+		<table id="clients-table">
+			<thead>
+				<tr>
+					<th>№</th>
+					<th>Клиент (Телефон)</th>
+					<th class="allCredit">Долг</th>
+					<th>Место</th>
+					<th class="no-print">Действия</th>
+				</tr>
+			</thead>
+			<tbody class="box"></tbody>
+		</table>
 
-<!-- PDF библиотеки -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-	<script type="module" src="./main.js"></script>
-</body>
+		<!-- Редактирование клиента -->
+		<dialog class="editClientDialog">
+			<button class="editClientDialogClose btn delete-btn">Закрыть</button>
+			<form class="editClientForm">
+				<input type="text" name="client" placeholder="Имя клиента" required />
+				<select name="place" required>
+					<option value="">Выберите место</option>
+					<option value="Садбарг">Садбарг</option>
+					<option value="Жд-Вокзал">Жд Вокзал</option>
+					<option value="Авто-база">Авто База</option>
+					<option value="Фаровон">Фаровон</option>
+					<option value="Мехргон">Мехргон</option>
+					<option value="Памир">Памир</option>
+					<option value="Сари-Осиё">Сари Осиё</option>
+					<option value="Кулоб">Кулоб</option>
+
+				</select>
+				<!-- Поле телефона (теперь просто строка) -->
+				<input
+					type="tel"
+					name="phoneNumber"
+					placeholder="Телефон (например, +992991234567)"
+					required
+				/>
+				<button type="submit" class="btn info-btn">Сохранить</button>
+			</form>
+		</dialog>
+
+		<!-- Информация о клиенте -->
+		<dialog class="dialogInfo">
+			<button class="dialogInfoClose btn delete-btn">Закрыть</button><br />
+			<label class="dataToday22"></label><br />
+			<label class="placeInfo"></label><br />
+			<label class="clientInfo"></label><br />
+			<label class="creditInfo"></label><br />
+
+			<input
+				type="text"
+				class="qarzNimaInfo form-input"
+				placeholder="Что купил"
+				required
+			/>
+			<input
+				type="text"
+				class="qarzNechiInfo form-input"
+				placeholder="количество"
+				required
+			/>
+			<input
+				type="text"
+				class="qarzNarkhInfo form-input"
+				placeholder="нархи"
+				required
+			/>
+			<input type="date" class="addDolgDate form-input" />
+
+			<button class="plusBtnInfo btn info-btn">Добавить долг</button
+			><br /><br /><br /><br /><br />
+
+			<h1>Выручка</h1>
+			<br />
+			<input
+				type="number"
+				class="minusInfo"
+				placeholder="Списать долг"
+				min="0"
+			/>
+			<input type="date" class="spisatDolgDate" />
+			<select class="sposobInfo" required>
+				<option value="">Способ оплаты</option>
+				<option value="Dushanbe Cити">Dushanbe Cити</option>
+				<option value="Наличи Пул">НАЛИЧНЫЙ ПУЛ</option>
+				<option value="Alif">ALIF MOBI</option>
+				<option value="AMONAT">AMONAT BANK</option>
+			</select>
+			<button class="minusBtnInfo btn info-btn">Списать</button><br />
+			<label class="pulInfo"></label>
+		</dialog>
+
+		<!-- Добавление клиента -->
+		<dialog class="addDialog">
+			<button class="addDialogClose btn delete-btn">Закрыть</button>
+			<form class="formAdd">
+				<input type="text" name="client" placeholder="Имя клиента" required />
+				<select name="place" required>
+					<option value="">Выберите место</option>
+					<option value="Садбарг">Садбарг</option>
+					<option value="Жд-Вокзал">Жд Вокзал</option>
+					<option value="Авто-база">Авто База</option>
+					<option value="Фаровон">Фаровон</option>
+					<option value="Мехргон">Мехргон</option>
+					<option value="Памир">Памир</option>
+					<option value="Сари-Осиё">Сари Осиё</option>
+					<option value="Кулоб">Кулоб</option>
+				</select>
+				<!-- Поле телефона (без оператора!) -->
+				<input
+					type="tel"
+					name="phoneNumber"
+					placeholder="Телефон (например, +992991234567)"
+					required
+				/>
+				<button type="submit" class="btn info-btn">Добавить</button>
+			</form>
+		</dialog>
+		<!-- Журнал действий -->
+		<dialog id="activityLogDialog" class="activity-log-dialog">
+			<button class="btn delete-btn" id="closeActivityLog">Закрыть</button>
+			<h2>Журнал действий</h2>
+
+			<div class="log-filters">
+				<button class="btn info-btn" data-date="today">Сегодня</button>
+				<button class="btn info-btn" data-date="yesterday">Вчера</button>
+				<button class="btn info-btn" data-date="all">Все</button>
+				<input type="date" id="customLogDate" class="log-date-input" />
+			</div>
+
+			<div
+				id="activityLogContent"
+				style="margin-top: 15px; max-height: 400px; overflow-y: auto"
+			>
+				<!-- Сюда подгружается журнал -->
+			</div>
+		</dialog>
+		<!-- Диалог создания накладной -->
+		<dialog id="invoiceDialog" class="invoice-dialog">
+			<button class="btn delete-btn" id="closeInvoiceDialog">Закрыть</button>
+			<h2>Создать накладную</h2>
+
+			<!-- Выбор клиента -->
+			<label>Клиент:</label>
+			<select id="invoiceClient" required>
+				<option value="">Выберите клиента</option>
+				<!-- Заполняется динамически -->
+			</select>
+			<label>Дата накладной:</label>
+			<input type="date" id="invoiceDate" required />
+			<!-- Товары -->
+			<div id="invoiceItems">
+				<div class="invoice-item">
+					<input
+						type="text"
+						class="item-name form-input"
+						placeholder="Товар"
+						required
+					/>
+					<input
+						type="number"
+						class="item-qty form-input"
+						placeholder="Кол-во"
+						min="1"
+						value="1"
+						required
+					/>
+					<input
+						type="number"
+						class="item-price form-input"
+						placeholder="Цена"
+						min="0"
+						step="0.01"
+						required
+					/>
+					<button type="button" class="btn delete-btn remove-item">
+						Удалить
+					</button>
+				</div>
+			</div>
+
+			<button type="button" id="addItemBtn" class="btn info-btn">
+				+ Добавить товар
+			</button>
+			<button type="button" id="saveInvoiceBtn" class="btn info-btn">
+				💾 Сохранить накладную
+			</button>
+
+			<!-- Предпросмотр -->
+			<div id="invoicePreview" style="margin-top: 20px; display: none">
+				<h3>Предпросмотр</h3>
+				<div id="previewContent"></div>
+			</div>
+		</dialog>
+		<!-- Диалог просмотра накладных -->
+		<dialog id="invoicesViewDialog" class="invoice-dialog">
+			<button class="btn delete-btn" id="closeInvoicesView">Закрыть</button>
+			<h2>Сохранённые накладные</h2>
+			<!-- Поле поиска накладных -->
+			<input
+				type="text"
+				id="invoiceSearch"
+				placeholder="Поиск по номеру, клиенту или товару..."
+				class="form-input"
+				style="margin-bottom: 15px; width: 100%"
+			/>
+			<div id="invoicesList"></div>
+		</dialog>
+		<div id="loading-overlay" class="loading-overlay" style="display: none">
+			<div class="spinner"></div>
+			<p>Загрузка...</p>
+		</div>
+
+		<!-- PDF библиотеки -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+		<script type="module" src="./main.js"></script>
+	</body>
 </html>

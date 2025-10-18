@@ -80,7 +80,8 @@ let _cachedLog = null; // кэш для уменьшения запросов
 export async function logActivity(action) {
 	if (!navigator.onLine) return;
 
-	const today = new Date().toLocaleDateString('ru-RU');
+	// const today = new Date().toLocaleDateString('ru-RU');
+	const today = new Date().toISOString().split('T')[0];
 	const time = new Date().toLocaleTimeString('ru-RU')+` ${new Date().toLocaleDateString('ru-RU')}`;
 	const user = getCurrentUser();
 
@@ -273,16 +274,24 @@ export async function updateInvoicesForClient(clientId, newClientName) {
 
 	try {
 		const response = await fetch(`https://7cf074eeac80e141.mokky.dev/invoice?clientId=${clientId}`);
+		if (!response.ok) {
+			console.warn('Не найдены накладные для клиента:', clientId);
+			return;
+		}
 		const records = await response.json();
 
 		for (const record of records) {
-			await fetch(`https://7cf074eeac80e141.mokky.dev/invoice/${record.id}`, {
+			const updateRes = await fetch(`https://7cf074eeac80e141.mokky.dev/invoice/${record.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ clientName: newClientName })
 			});
+			if (!updateRes.ok) {
+				console.error('Не удалось обновить имя в накладной ID:', record.id);
+			}
 		}
 	} catch (err) {
-		console.warn('Не удалось обновить накладные:', err);
+		console.error('Ошибка в updateInvoicesForClient:', err);
+		// НЕ пробрасываем ошибку — чтобы не ломать основное обновление
 	}
 }
