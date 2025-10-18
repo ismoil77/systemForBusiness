@@ -1420,3 +1420,89 @@ function updateTotalDebt() {
 		)} сомони</span>`
 	}
 }
+// === АВТОМАТИЧЕСКАЯ ЕЖЕДНЕВНАЯ РЕЗЕРВНАЯ КОПИЯ ===
+async function autoBackupIfNeeded() {
+	if (!navigator.onLine) return
+
+	const today = new Date().toISOString().split('T')[0]
+	const lastBackup = localStorage.getItem('lastBackupDate')
+
+	if (false) {
+		console.log('✅ Резервная копия за сегодня уже создана')
+		return
+	}
+
+	if (!confirm('Хотите создать резервную копию данных за сегодня?')) {
+		return
+	}
+
+	try {
+		await createBackupZip()
+		localStorage.setItem('lastBackupDate', today)
+		console.log('✅ Резервная копия сохранена')
+	} catch (err) {
+		console.error('❌ Ошибка при создании резервной копии:', err)
+		alert('Не удалось создать резервную копию')
+	}
+}
+
+async function createBackupZip() {
+	const collections = [
+		'DilobarQurbanova',
+		'MamatkulovMurodullo',
+		'invoice',
+		'activityLog',
+	]
+	const baseUrl = 'https://7cf074eeac80e141.mokky.dev'
+
+	// Загружаем JSZip
+	const script = document.createElement('script')
+	script.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'
+	document.head.appendChild(script)
+	await new Promise(resolve => {
+		script.onload = resolve
+	})
+
+	const zip = new JSZip()
+	const now = new Date()
+	const folderName = `backup_${now
+		.toISOString()
+		.slice(0, 19)
+		.replace(/[:T]/g, '-')}`
+	const backupFolder = zip.folder(folderName)
+
+	for (const collection of collections) {
+		try {
+			const res = await fetch(`${baseUrl}/${collection}`)
+			if (res.ok) {
+				const data = await res.json()
+				backupFolder.file(`${collection}.json`, JSON.stringify(data, null, 2))
+			}
+		} catch (err) {
+			console.warn(`⚠️ Пропущена коллекция ${collection}:`, err)
+		}
+	}
+
+	// Скачиваем ZIP
+	const blob = await zip.generateAsync({ type: 'blob' })
+	const url = URL.createObjectURL(blob)
+	const a = document.createElement('a')
+	a.href = url
+	a.download = `${folderName}.zip`
+	document.body.appendChild(a)
+	a.click()
+	document.body.removeChild(a)
+	URL.revokeObjectURL(url)
+}
+
+// Запускаем резервную копию при загрузке (если онлайн)
+window.addEventListener('load', () => {
+	if (navigator.onLine) {
+		autoBackupIfNeeded()
+	}
+})
+window.addEventListener('beforeunload', function (event) {
+	// Показываем системное окно подтверждения
+	event.preventDefault()
+	event.returnValue = 'Вы уверены, что хотите выйти?'
+})

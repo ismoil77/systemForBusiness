@@ -197,6 +197,7 @@ export async function postData(data) {
 		getData()
 		const result = await response.json();
 		await logActivity(`Добавлен клиент: ${result.client}`);
+		alert('✅ Клиент успешно добавлен!');
 		return true; // успех
 
 	} catch (error) {
@@ -229,6 +230,7 @@ export async function deleteData(id, clientName, phone = '') {
 		// ✅ Используем переданные параметры
 		await logActivity(`Удалил клиента "${clientName}" (телефон: ${phone || '—'})`);
 		getData(); // обновляем список
+		alert('✅ Клиент успешно удалён!');
 		return true;
 
 	} catch (error) {
@@ -261,6 +263,7 @@ export async function putData(id, data) {
 		}
 
 		getData(); // обновляем интерфейс
+		alert('✅ Данные успешно обновлены!');
 		return true;
 
 	} catch (error) {
