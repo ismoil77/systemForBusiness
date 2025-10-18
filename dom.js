@@ -1420,89 +1420,97 @@ function updateTotalDebt() {
 		)} сомони</span>`
 	}
 }
-// === АВТОМАТИЧЕСКАЯ ЕЖЕДНЕВНАЯ РЕЗЕРВНАЯ КОПИЯ ===
-async function autoBackupIfNeeded() {
-	if (!navigator.onLine) return
 
-	const today = new Date().toISOString().split('T')[0]
-	const lastBackup = localStorage.getItem('lastBackupDate')
-
-	if (false) {
-		console.log('✅ Резервная копия за сегодня уже создана')
-		return
-	}
-
-	if (!confirm('Хотите создать резервную копию данных за сегодня?')) {
-		return
-	}
-
+// === ЕДИНСТВЕННАЯ ФУНКЦИЯ РЕЗЕРВНОГО КОПИРОВАНИЯ ===
+async function createFullBackup() {
+	showLoading()
 	try {
-		await createBackupZip()
-		localStorage.setItem('lastBackupDate', today)
-		console.log('✅ Резервная копия сохранена')
-	} catch (err) {
-		console.error('❌ Ошибка при создании резервной копии:', err)
-		alert('Не удалось создать резервную копию')
-	}
-}
+		const baseUrl = 'https://7cf074eeac80e141.mokky.dev';
+	const collections = ['DilobarQurbanova', 'MamatkulovMurodullo', 'invoice', 'activityLog'];
 
-async function createBackupZip() {
-	const collections = [
-		'DilobarQurbanova',
-		'MamatkulovMurodullo',
-		'invoice',
-		'activityLog',
-	]
-	const baseUrl = 'https://7cf074eeac80e141.mokky.dev'
-
-	// Загружаем JSZip
-	const script = document.createElement('script')
-	script.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'
-	document.head.appendChild(script)
-	await new Promise(resolve => {
-		script.onload = resolve
-	})
-
-	const zip = new JSZip()
-	const now = new Date()
-	const folderName = `backup_${now
-		.toISOString()
-		.slice(0, 19)
-		.replace(/[:T]/g, '-')}`
-	const backupFolder = zip.folder(folderName)
-
-	for (const collection of collections) {
+	// 1. Загружаем данные
+	const data = {};
+	for (const name of collections) {
 		try {
-			const res = await fetch(`${baseUrl}/${collection}`)
-			if (res.ok) {
-				const data = await res.json()
-				backupFolder.file(`${collection}.json`, JSON.stringify(data, null, 2))
-			}
-		} catch (err) {
-			console.warn(`⚠️ Пропущена коллекция ${collection}:`, err)
+			const res = await fetch(`${baseUrl}/${name}`);
+			data[name] = res.ok ? await res.json() : [];
+		} catch {
+			data[name] = [];
 		}
 	}
 
-	// Скачиваем ZIP
-	const blob = await zip.generateAsync({ type: 'blob' })
-	const url = URL.createObjectURL(blob)
-	const a = document.createElement('a')
-	a.href = url
-	a.download = `${folderName}.zip`
-	document.body.appendChild(a)
-	a.click()
-	document.body.removeChild(a)
-	URL.revokeObjectURL(url)
-}
+	// 2. Создаём summary.json
+	const totalClients = (data.DilobarQurbanova?.length || 0) + (data.MamatkulovMurodullo?.length || 0);
+	const totalDebt = [
+		...(data.DilobarQurbanova || []),
+		...(data.MamatkulovMurodullo || [])
+	].reduce((sum, c) => sum + (parseFloat(c.credit) || 0), 0);
 
-// Запускаем резервную копию при загрузке (если онлайн)
-window.addEventListener('load', () => {
-	if (navigator.onLine) {
-		autoBackupIfNeeded()
+	const summary = {
+		totalClients,
+		totalDebt: Math.round(totalDebt),
+		dilobarClients: data.DilobarQurbanova?.length || 0,
+		murodulloClients: data.MamatkulovMurodullo?.length || 0,
+		dilobarDebt: data.DilobarQurbanova?.reduce((s, c) => s + (parseFloat(c.credit) || 0), 0) || 0,
+		murodulloDebt: data.MamatkulovMurodullo?.reduce((s, c) => s + (parseFloat(c.credit) || 0), 0) || 0,
+		backupDate: new Date().toISOString()
+	};
+
+	// 3. ДОБАВЛЯЕМ summary в данные
+	data.summary = summary;
+
+	// === СОЗДАНИЕ ZIP ===
+	const script = document.createElement('script');
+	script.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+	document.head.appendChild(script);
+	await new Promise(r => script.onload = r);
+
+	const zip = new JSZip();
+	const folderName = `backup_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
+	const backupFolder = zip.folder(folderName);
+
+	// Добавляем ВСЕ 5 файлов
+	for (const [name, content] of Object.entries(data)) {
+		backupFolder.file(`${name}.json`, JSON.stringify(content, null, 2));
 	}
-})
-window.addEventListener('beforeunload', function (event) {
-	// Показываем системное окно подтверждения
-	event.preventDefault()
-	event.returnValue = 'Вы уверены, что хотите выйти?'
-})
+
+	// Скачиваем ZIP
+	const blob = await zip.generateAsync({ type: 'blob' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = `${folderName}.zip`;
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+	URL.revokeObjectURL(url);
+
+	// === ЗАГРУЗКА В GIST (5 файлов) ===
+	const GIST_ID = 'b4b97f987d163c0d4ec3ea3940562e90';
+	const GITHUB_TOKEN = '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';
+
+	const gistFiles = {};
+	for (const [name, content] of Object.entries(data)) {
+		gistFiles[`${name}.json`] = { content: JSON.stringify(content, null, 2) };
+	}
+
+	await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+		method: 'PATCH',
+		headers: {
+			'Authorization': `token ${GITHUB_TOKEN}`,
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({ files: gistFiles })
+	});
+
+	console.log('✅ Резервная копия: 5 файлов в ZIP и в Gist');
+	} catch (error) {
+		console.log(error);
+		
+	}
+	finally{
+		hideLoading()
+	}
+	
+}
+document.getElementById('backupDataBtn')?.addEventListener('click', createFullBackup);
