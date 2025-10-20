@@ -471,3 +471,15 @@ select option {
 		padding-right: 16px; /* Firefox не поддерживает кастомную стрелку */
 	}
 }
+textarea[readonly] {
+  width: 250px;
+  height: auto;
+  min-height: 30px;
+  resize: none;
+  overflow-wrap: break-word; /* перенос слов */
+  white-space: pre-wrap;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background-color: #f8f8f8;
+}

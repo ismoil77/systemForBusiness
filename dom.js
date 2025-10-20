@@ -848,7 +848,7 @@ saveInvoiceBtn?.addEventListener('click', async () => {
 			const newRecord = {
 				id: clientId, // ← ID совпадает с clientId!
 				clientId: client.id,
-				clientName: client.client,
+				clientName: client.client + ' ' + client.place,
 				invoices: [newInvoice],
 			}
 			await fetch('https://7cf074eeac80e141.mokky.dev/invoice', {
@@ -1041,7 +1041,12 @@ function renderInvoicesList(clientRecords) {
 			const clientId = Number(invoiceDiv.dataset.clientId)
 			const client = fullClientList.find(c => c.id === clientId)
 
-			printInvoice(invoice, client?.client || 'Не указан')
+			printInvoice(
+				invoice,
+				client?.client || 'Не указан',
+				client?.place || '',
+				client.phoneNumber?.[0] || ''
+			)
 		})
 	})
 
@@ -1066,7 +1071,9 @@ function renderInvoicesList(clientRecords) {
 				</div>
 				<div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
 					<div><strong>Компания:</strong> M.M.C +992 988-66-77-75 </div>
-					<div><strong>Клиент:</strong> ${clientName}</div>
+					<div><strong>Клиент: ${client?.phoneNumber}</strong> ${
+				clientName + ' ' + client.place
+			}</div>
 				</div>
 				<table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
 					<thead>
@@ -1230,7 +1237,7 @@ closeInvoicesView?.addEventListener('click', () => {
 })
 // Функция печати накладной
 // Функция печати накладной (красивая версия)
-function printInvoice(invoice, clientName) {
+function printInvoice(invoice, clientName, place, phoneNumber) {
 	// Форматируем дату
 	const invoiceDate = new Date(invoice.createdAt)
 
@@ -1358,8 +1365,8 @@ function printInvoice(invoice, clientName) {
 					<input type="text" value="M.M.C +992 988-66-77-75" readonly>
 				</div>
 				<div>
-					<label>Клиент:</label>
-				<input type="text" value="${clientName}" readonly>
+					<label>Клиент: ${phoneNumber}</label>
+				<input type="text" value="${clientName + ' ' + place}" readonly>
 				</div>
 			</div>
 
@@ -1425,92 +1432,109 @@ function updateTotalDebt() {
 async function createFullBackup() {
 	showLoading()
 	try {
-		const baseUrl = 'https://7cf074eeac80e141.mokky.dev';
-	const collections = ['DilobarQurbanova', 'MamatkulovMurodullo', 'invoice', 'activityLog'];
+		const baseUrl = 'https://7cf074eeac80e141.mokky.dev'
+		const collections = [
+			'DilobarQurbanova',
+			'MamatkulovMurodullo',
+			'invoice',
+			'activityLog',
+		]
 
-	// 1. Загружаем данные
-	const data = {};
-	for (const name of collections) {
-		try {
-			const res = await fetch(`${baseUrl}/${name}`);
-			data[name] = res.ok ? await res.json() : [];
-		} catch {
-			data[name] = [];
+		// 1. Загружаем данные
+		const data = {}
+		for (const name of collections) {
+			try {
+				const res = await fetch(`${baseUrl}/${name}`)
+				data[name] = res.ok ? await res.json() : []
+			} catch {
+				data[name] = []
+			}
 		}
-	}
 
-	// 2. Создаём summary.json
-	const totalClients = (data.DilobarQurbanova?.length || 0) + (data.MamatkulovMurodullo?.length || 0);
-	const totalDebt = [
-		...(data.DilobarQurbanova || []),
-		...(data.MamatkulovMurodullo || [])
-	].reduce((sum, c) => sum + (parseFloat(c.credit) || 0), 0);
+		// 2. Создаём summary.json
+		const totalClients =
+			(data.DilobarQurbanova?.length || 0) +
+			(data.MamatkulovMurodullo?.length || 0)
+		const totalDebt = [
+			...(data.DilobarQurbanova || []),
+			...(data.MamatkulovMurodullo || []),
+		].reduce((sum, c) => sum + (parseFloat(c.credit) || 0), 0)
 
-	const summary = {
-		totalClients,
-		totalDebt: Math.round(totalDebt),
-		dilobarClients: data.DilobarQurbanova?.length || 0,
-		murodulloClients: data.MamatkulovMurodullo?.length || 0,
-		dilobarDebt: data.DilobarQurbanova?.reduce((s, c) => s + (parseFloat(c.credit) || 0), 0) || 0,
-		murodulloDebt: data.MamatkulovMurodullo?.reduce((s, c) => s + (parseFloat(c.credit) || 0), 0) || 0,
-		backupDate: new Date().toISOString()
-	};
+		const summary = {
+			totalClients,
+			totalDebt: Math.round(totalDebt),
+			dilobarClients: data.DilobarQurbanova?.length || 0,
+			murodulloClients: data.MamatkulovMurodullo?.length || 0,
+			dilobarDebt:
+				data.DilobarQurbanova?.reduce(
+					(s, c) => s + (parseFloat(c.credit) || 0),
+					0
+				) || 0,
+			murodulloDebt:
+				data.MamatkulovMurodullo?.reduce(
+					(s, c) => s + (parseFloat(c.credit) || 0),
+					0
+				) || 0,
+			backupDate: new Date().toISOString(),
+		}
 
-	// 3. ДОБАВЛЯЕМ summary в данные
-	data.summary = summary;
+		// 3. ДОБАВЛЯЕМ summary в данные
+		data.summary = summary
 
-	// === СОЗДАНИЕ ZIP ===
-	const script = document.createElement('script');
-	script.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
-	document.head.appendChild(script);
-	await new Promise(r => script.onload = r);
+		// === СОЗДАНИЕ ZIP ===
+		const script = document.createElement('script')
+		script.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'
+		document.head.appendChild(script)
+		await new Promise(r => (script.onload = r))
 
-	const zip = new JSZip();
-	const folderName = `backup_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
-	const backupFolder = zip.folder(folderName);
+		const zip = new JSZip()
+		const folderName = `backup_${new Date()
+			.toISOString()
+			.slice(0, 19)
+			.replace(/[:T]/g, '-')}`
+		const backupFolder = zip.folder(folderName)
 
-	// Добавляем ВСЕ 5 файлов
-	for (const [name, content] of Object.entries(data)) {
-		backupFolder.file(`${name}.json`, JSON.stringify(content, null, 2));
-	}
+		// Добавляем ВСЕ 5 файлов
+		for (const [name, content] of Object.entries(data)) {
+			backupFolder.file(`${name}.json`, JSON.stringify(content, null, 2))
+		}
 
-	// Скачиваем ZIP
-	const blob = await zip.generateAsync({ type: 'blob' });
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = `${folderName}.zip`;
-	document.body.appendChild(a);
-	a.click();
-	document.body.removeChild(a);
-	URL.revokeObjectURL(url);
+		// Скачиваем ZIP
+		const blob = await zip.generateAsync({ type: 'blob' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = `${folderName}.zip`
+		document.body.appendChild(a)
+		a.click()
+		document.body.removeChild(a)
+		URL.revokeObjectURL(url)
 
-	// === ЗАГРУЗКА В GIST (5 файлов) ===
-	const GIST_ID = 'b4b97f987d163c0d4ec3ea3940562e90';
-	const GITHUB_TOKEN = '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';
+		// === ЗАГРУЗКА В GIST (5 файлов) ===
+		const GIST_ID = 'b4b97f987d163c0d4ec3ea3940562e90'
+		const GITHUB_TOKEN = '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'
 
-	const gistFiles = {};
-	for (const [name, content] of Object.entries(data)) {
-		gistFiles[`${name}.json`] = { content: JSON.stringify(content, null, 2) };
-	}
+		const gistFiles = {}
+		for (const [name, content] of Object.entries(data)) {
+			gistFiles[`${name}.json`] = { content: JSON.stringify(content, null, 2) }
+		}
 
-	await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-		method: 'PATCH',
-		headers: {
-			'Authorization': `token ${GITHUB_TOKEN}`,
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({ files: gistFiles })
-	});
+		await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+			method: 'PATCH',
+			headers: {
+				Authorization: `token ${GITHUB_TOKEN}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ files: gistFiles }),
+		})
 
-	console.log('✅ Резервная копия: 5 файлов в ZIP и в Gist');
+		console.log('✅ Резервная копия: 5 файлов в ZIP и в Gist')
 	} catch (error) {
-		console.log(error);
-		
-	}
-	finally{
+		console.log(error)
+	} finally {
 		hideLoading()
 	}
-	
 }
-document.getElementById('backupDataBtn')?.addEventListener('click', createFullBackup);
+document
+	.getElementById('backupDataBtn')
+	?.addEventListener('click', createFullBackup)
