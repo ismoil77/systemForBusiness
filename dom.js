@@ -1583,3 +1583,59 @@ async function createFullBackup() {
 document
 	.getElementById('backupDataBtn')
 	?.addEventListener('click', createFullBackup)
+
+
+	
+	// === АВТОМАТИЧЕСКОЕ НАПОМИНАНИЕ О РЕЗЕРВНОЙ КОПИИ ===
+function checkAndShowBackupReminder() {
+	const lastBackup = localStorage.getItem('lastBackupDate')
+	const now = new Date().getTime()
+	const oneDay = 24 * 60 * 60 * 1000 // 1 день
+	
+	// Если прошло больше суток с последнего бэкапа
+	if (!lastBackup || (now - parseInt(lastBackup)) > oneDay) {
+		// Показываем красивое уведомление
+		const reminder = document.createElement('div')
+		reminder.className = 'backup-reminder'
+		reminder.innerHTML = `
+			<div class="backup-reminder-content">
+				<h3>💾 Напоминание</h3>
+				<p>Вы не делали резервную копию больше суток.<br>Рекомендуем создать её сейчас.</p>
+				<button class="btn info-btn" id="backupNow">Создать сейчас</button>
+				<button class="btn" id="backupLater">Позже</button>
+			</div>
+		`
+		document.body.appendChild(reminder)
+		
+		// Обработчик "Создать сейчас"
+		document.getElementById('backupNow').addEventListener('click', async () => {
+			reminder.remove()
+			await createFullBackup()
+			localStorage.setItem('lastBackupDate', new Date().getTime().toString())
+			alert('✅ Резервная копия создана!')
+		})
+		
+		// Обработчик "Позже"
+		document.getElementById('backupLater').addEventListener('click', () => {
+			reminder.remove()
+			// Напомним через 2 часа
+			setTimeout(checkAndShowBackupReminder, 2 * 60 * 60 * 1000)
+		})
+	}
+}
+
+// Проверяем при загрузке страницы
+window.addEventListener('load', () => {
+	// Ждём 5 секунд после загрузки, чтобы не мешать
+	setTimeout(checkAndShowBackupReminder, 5000)
+})
+
+// Обновляем дату при успешном создании бэкапа
+const originalBackupBtn = document.getElementById('backupDataBtn')
+if (originalBackupBtn) {
+	const originalClickHandler = originalBackupBtn.onclick
+	originalBackupBtn.addEventListener('click', async () => {
+		// Сохраняем дату после успешного бэкапа
+		localStorage.setItem('lastBackupDate', new Date().getTime().toString())
+	})
+}
