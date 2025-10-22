@@ -1045,7 +1045,7 @@ function renderInvoicesList(clientRecords) {
 				invoice,
 				client?.client || 'Не указан',
 				client?.place || '',
-				client.phoneNumber?.[0] || ''
+				client?.phoneNumber?.[0] || ''
 			)
 		})
 	})
