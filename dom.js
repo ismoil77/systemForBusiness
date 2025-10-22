@@ -1072,7 +1072,7 @@ function renderInvoicesList(clientRecords) {
 				<div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
 					<div><strong>Компания:</strong> M.M.C +992 988-66-77-75 </div>
 					<div><strong>Клиент: ${client?.phoneNumber}</strong> ${
-				clientName + ' ' + client.place
+				clientName + ' ' + client?.place
 			}</div>
 				</div>
 				<table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
