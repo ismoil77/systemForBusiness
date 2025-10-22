@@ -56,6 +56,70 @@ const sposobInfo = document.querySelector('.sposobInfo')
 const plusBtnInfo = document.querySelector('.plusBtnInfo')
 const minusBtnInfo = document.querySelector('.minusBtnInfo')
 const dialogInfoClose = document.querySelector('.dialogInfoClose')
+// === ИСПРАВЛЕНИЕ МНОЖЕСТВЕННЫХ ЗАПРОСОВ ===
+let currentClientId = null  // Хранит ID открытого клиента
+let isProcessing = false    // Флаг: идёт ли сейчас запрос
+
+// Обработчик кнопки "Добавить долг" (подписываемся ОДИН РАЗ)
+plusBtnInfo.addEventListener('click', async () => {
+	// Если диалог закрыт ИЛИ уже идёт обработка - ничего не делаем
+	if (!currentClientId || isProcessing) return
+	
+	// Ищем клиента по сохранённому ID
+	const client = fullClientList.find(c => c.id === currentClientId)
+	if (!client) return
+	
+	// БЛОКИРУЕМ КНОПКУ
+	isProcessing = true
+	plusBtnInfo.disabled = true
+	plusBtnInfo.textContent = '⏳ Добавление...'
+	plusBtnInfo.style.opacity = '0.6'
+	
+	try {
+		// Вызываем функцию добавления долга
+		await addDebt(client)
+		qarzNimaInfo.value = ''
+	qarzNechiInfo.value = ''
+	qarzNarkhInfo.value = ''
+	addDolgDate.value = todayISO
+		// Диалог НЕ закрываем - можно добавить ещё долгов
+	} catch (error) {
+		console.error('Ошибка:', error)
+		alert('Не удалось добавить долг')
+	} finally {
+		// РАЗБЛОКИРУЕМ КНОПКУ (в любом случае)
+		isProcessing = false
+		plusBtnInfo.disabled = false
+		plusBtnInfo.textContent = 'Добавить долг'
+		plusBtnInfo.style.opacity = '1'
+	}
+})
+
+// Обработчик кнопки "Списать" (аналогично)
+minusBtnInfo.addEventListener('click', async () => {
+	if (!currentClientId || isProcessing) return
+	
+	const client = fullClientList.find(c => c.id === currentClientId)
+	if (!client) return
+	
+	isProcessing = true
+	minusBtnInfo.disabled = true
+	minusBtnInfo.textContent = '⏳ Списание...'
+	minusBtnInfo.style.opacity = '0.6'
+	
+	try {
+		await addPayment(client)
+		resetDebtPaymentFields()
+	} catch (error) {
+		console.error('Ошибка:', error)
+		alert('Не удалось списать выплату')
+	} finally {
+		isProcessing = false
+		minusBtnInfo.disabled = false
+		minusBtnInfo.textContent = 'Списать'
+		minusBtnInfo.style.opacity = '1'
+	}
+})
 const addDialogClose = document.querySelector('.addDialogClose')
 const editClientDialogClose = document.querySelector('.editClientDialogClose')
 const spisatDolgDate = document.querySelector('.spisatDolgDate')
@@ -119,6 +183,7 @@ addDialogClose.addEventListener('click', () => {
 })
 
 dialogInfoClose.addEventListener('click', () => {
+	currentClientId = null
 	dialogInfo.close()
 	resetDebtPaymentFields()
 })
@@ -268,37 +333,17 @@ export function renderClientTable(data) {
 // === ОТКРЫТЬ ДИАЛОГ ИНФОРМАЦИИ О КЛИЕНТЕ ===
 function openClientInfo(client) {
 	if (!navigator.onLine) return
-
-	// Сохраняем ссылку на клиента (для обновления)
-	let currentClient = { ...client } // копия
-
-	clientInfo.textContent = `Клиент: ${currentClient.client}`
-	placeInfo.textContent = `Место: ${currentClient.place}`
-	creditInfo.innerHTML = `Долг: ${currentClient.credit || 0} сомони<br>`
-
-	// === ИСТОРИЯ ДОЛГОВ ===
-	renderDebtHistory(currentClient)
-	// === ИСТОРИЯ ВЫПЛАТ ===
-	renderPaymentHistory(currentClient)
-
+	
+	currentClientId = client.id
+	
+	clientInfo.textContent = `Клиент: ${client.client}`
+	placeInfo.textContent = `Место: ${client.place}`
+	creditInfo.innerHTML = `Долг: ${client.credit || 0} сомони<br>`
+	
+	renderDebtHistory(client)
+	renderPaymentHistory(client)
+	
 	dialogInfo.showModal()
-
-	// === ОБРАБОТЧИКИ ДОЛГА/ВЫПЛАТЫ (ТОЛЬКО ОДИН РАЗ!) ===
-	plusBtnInfo.replaceWith(plusBtnInfo.cloneNode(true)) // убираем старые слушатели
-	minusBtnInfo.replaceWith(minusBtnInfo.cloneNode(true))
-	dialogInfoClose.replaceWith(dialogInfoClose.cloneNode(true))
-
-	// Новые слушатели
-	dialogInfo
-		.querySelector('.plusBtnInfo')
-		.addEventListener('click', () => addDebt(currentClient))
-	dialogInfo
-		.querySelector('.minusBtnInfo')
-		.addEventListener('click', () => addPayment(currentClient))
-	dialogInfo.querySelector('.dialogInfoClose').addEventListener('click', () => {
-		dialogInfo.close()
-		resetDebtPaymentFields()
-	})
 }
 
 // === ОТРИСОВКА ИСТОРИИ ДОЛГОВ ===
@@ -457,7 +502,7 @@ async function addPayment(client) {
 	const date = spisatDolgDate.value || todayISO
 
 	if (isNaN(amount) || amount <= 0 || !method) {
-		alert('Укажите сумму (>0) и способ оплаты')
+		alert('Укажите сумму (>0) и способ оплаты!!')
 		return
 	}
 
