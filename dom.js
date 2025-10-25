@@ -333,7 +333,11 @@ export function renderClientTable(data) {
 // === ОТКРЫТЬ ДИАЛОГ ИНФОРМАЦИИ О КЛИЕНТЕ ===
 function openClientInfo(client) {
 	if (!navigator.onLine) return
-	
+	// === КНОПКА ПЕЧАТИ ИСТОРИИ КЛИЕНТА ===
+const printHistoryBtn = dialogInfo.querySelector('.print-client-history-btn');
+if (printHistoryBtn) {
+	printHistoryBtn.onclick = () => printClientHistory(client);
+}
 	currentClientId = client.id
 	
 	clientInfo.textContent = `Клиент: ${client.client}`
@@ -345,15 +349,37 @@ function openClientInfo(client) {
 	
 	dialogInfo.showModal()
 }
+function sumTransactionHistory(history) {
+	if (!Array.isArray(history)) return 0
+	return history.reduce((sum, item) => {
+		const amountStr = item[1] || '0'
+		// Безопасно извлекаем число из строки "1000 сомони"
+		// Удаляем все, кроме цифр, точки и минуса
+		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0 
+		return sum + amount
+	}, 0)
+}
 
 // === ОТРИСОВКА ИСТОРИИ ДОЛГОВ ===
+// ВАЖНО: Добавьте функцию sumTransactionHistory перед этим кодом, если ее нет!
+
+// === ОТРИСОВКА ИСТОРИИ ДОЛГОВ (С ЗАЩИТОЙ И ПЕРЕСЧЕТОМ) ===
+// ВАЖНО: Убедитесь, что функции sumTransactionHistory, loadInvoiceModalFromDebt,
+// showLoading, hideLoading, logActivity, putData и updateTotalDebt
+// определены и доступны в вашем файле dom_js.txt!
+
+// === ОТРИСОВКА ИСТОРИИ ДОЛГОВ (С ЗАЩИТОЙ, ПЕРЕСЧЕТОМ И ЧЕКБОКСАМИ ДЛЯ НАКЛАДНОЙ) ===
 function renderDebtHistory(client) {
+	// 1. Создание таблицы с новой колонкой для чекбоксов
 	let table =
-		'<table><tr><th>№</th><th>Дата</th><th>Сумма</th><th>Что купил</th><th>Действия</th></tr>'
+		'<table><tr><th>№</th><th><input type="checkbox" id="selectAllDebts"></th><th>Дата</th><th>Сумма</th><th>Что купил</th><th>Действия</th></tr>'
+	
+	// Используем client.creditHistory, который является объектом (массивом)
 	;(client.creditHistory || []).forEach((item, idx) => {
 		table += `
 			<tr>
 				<td>${idx + 1}</td>
+                <td><input type="checkbox" class="invoice-checkbox" value="${idx}"></td>
 				<td>${item[0]}</td>
 				<td>${item[1]}</td>
 				<td>${item[2]}</td>
@@ -361,9 +387,35 @@ function renderDebtHistory(client) {
 			</tr>`
 	})
 	table += '</table>'
-	creditInfo.innerHTML += table
+    
+    // 2. Кнопка для создания накладной
+    const invoiceControlsHtml = `
+        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+            <button id="loadInvoiceModalBtn" class="btn info-btn">📄 Создать Накладную из выбранного</button>
+            <label style="font-size: 14px; color: #555;">(Выберите долги ниже)</label>
+        </div>
+    `;
 
-	// Безопасное удаление: используем data-id = индекс в массиве
+	creditInfo.innerHTML += invoiceControlsHtml + table; // Добавляем элементы в DOM
+
+	// === ОБРАБОТЧИКИ НОВОЙ ФУНКЦИОНАЛЬНОСТИ ===
+
+    // 1. Обработчик "Выбрать все"
+    const selectAllCheckbox = creditInfo.querySelector('#selectAllDebts');
+    selectAllCheckbox?.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        creditInfo.querySelectorAll('.invoice-checkbox').forEach(cb => {
+            cb.checked = isChecked;
+        });
+    });
+
+    // 2. Обработчик кнопки "Создать Накладную"
+    creditInfo.querySelector('#loadInvoiceModalBtn')?.addEventListener('click', () => {
+        // Вызываем функцию, которая собирает данные и открывает модалку накладной
+        loadInvoiceModalFromDebt(client); 
+    });
+    
+    // 3. Обработчик УДАЛЕНИЯ ДОЛГА (С ЗАЩИТОЙ И ПЕРЕСЧЕТОМ)
 	creditInfo.querySelectorAll('.delete-debt').forEach(btn => {
 		btn.addEventListener('click', async () => {
 			const idx = parseInt(btn.dataset.id)
@@ -372,17 +424,45 @@ function renderDebtHistory(client) {
 
 			if (!confirm('Удалить запись о долге?')) return
 
-			showLoading() // ← ПОКАЗАТЬ ЗАГРУЗКУ
+			// --- 🛡️ ЛОГИКА ЗАЩИТЫ (Проверка Общего Котла) ---
+			const amountToDeleteStr = history[idx][1] || '0'
+			const amountToDelete =
+				parseFloat(amountToDeleteStr.replace(/[^0-9.-]/g, '')) || 0
+
+			// Общая сумма выплат
+			const totalPayments = sumTransactionHistory(client.viruchka || [])
+
+			// Общая сумма долгов ДО удаления
+			const currentTotalDebts = sumTransactionHistory(history)
+			// Общая сумма долгов ПОСЛЕ удаления
+			const newTotalDebts = currentTotalDebts - amountToDelete
+
+			// ГЛАВНАЯ ПРОВЕРКА ЦЕЛОСТНОСТИ:
+			if (newTotalDebts < totalPayments) {
+				alert(
+					`🚫 ЗАЩИТА (Несостыковка)! Нельзя удалить этот долг.\n\n` +
+						`После удаления: Общая сумма долгов (${newTotalDebts.toFixed(0)} сомони) будет меньше, чем Общая сумма выплат (${totalPayments.toFixed(0)} сомони).\n` +
+						`Это приведет к отрицательному балансу.\n\n` +
+						`Сначала удалите часть выплат, чтобы освободить сумму долга, если это необходимо.`
+				)
+				return // Блокируем удаление
+			}
+			// --- КОНЕЦ ЛОГИКИ ЗАЩИТЫ ---
+
+			showLoading()
 
 			try {
+				// Удаляем запись
 				const removed = history.splice(idx, 1)[0]
-				const amount = parseFloat(removed[1]) || 0
-				const newCredit = Math.max(0, (parseFloat(client.credit) || 0) - amount)
+				
+				// Полный пересчет баланса
+				const newCredit = Math.max(0, newTotalDebts - totalPayments)
 
 				await logActivity(
 					`Удалил запись долга: "${removed[0]}, ${removed[1]}, ${removed[2]}" у клиента "${client.client}"`
 				)
 
+				// Сохраняем с новым, пересчитанным кредитом
 				await putData(client.id, {
 					...client,
 					credit: newCredit,
@@ -390,11 +470,11 @@ function renderDebtHistory(client) {
 				})
 
 				dialogInfo.close()
-				updateTotalDebt() // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+				updateTotalDebt()
 			} catch (err) {
 				alert('Ошибка при удалении записи долга')
 			} finally {
-				hideLoading() // ← СКРЫТЬ В ЛЮБОМ СЛУЧАЕ
+				hideLoading()
 			}
 		})
 	})
@@ -817,8 +897,15 @@ createInvoiceBtn?.addEventListener('click', async () => {
 
 // Закрытие
 closeInvoiceDialog?.addEventListener('click', () => {
-	invoiceDialog.close()
-})
+    // Разблокировать поле клиента и очистить динамически добавленные опции
+    if (invoiceClientSelect) {
+        invoiceClientSelect.disabled = false;
+        // Восстанавливаем только опцию "Выберите клиента" (предполагаем, что она первая)
+        invoiceClientSelect.innerHTML = invoiceClientSelect.options[0]?.outerHTML || '<option value="">Выберите клиента</option>';
+    }
+    // Закрыть модалку
+    invoiceDialog.close();
+});
 
 // Добавление товара
 addItemBtn?.addEventListener('click', () => {
@@ -1638,4 +1725,221 @@ if (originalBackupBtn) {
 		// Сохраняем дату после успешного бэкапа
 		localStorage.setItem('lastBackupDate', new Date().getTime().toString())
 	})
+}
+
+// === ПЕЧАТЬ ИСТОРИИ КЛИЕНТА ===
+// === ПЕЧАТЬ ИСТОРИИ КЛИЕНТА ===
+function printClientHistory(client) {
+	// Общая сумма долгов
+	const totalDebtHistory = (client.creditHistory || []).reduce((sum, item) => {
+		const amountStr = item[1] || '0';
+		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0;
+		return sum + amount;
+	}, 0);
+
+	// Общая сумма выплат
+	const totalPaymentHistory = (client.viruchka || []).reduce((sum, item) => {
+		const amountStr = item[1] || '0';
+		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0;
+		return sum + amount;
+	}, 0);
+
+	const printContent = `
+		<!DOCTYPE html>
+		<html lang="ru">
+		<head>
+			<meta charset="UTF-8">
+			<title>История клиента ${client.client}</title>
+			<style>
+				* { box-sizing: border-box; }
+				body {
+					font-family: 'Arial', sans-serif;
+					margin: 40px;
+					color: #333;
+					background: #fdfdfd;
+				}
+				h1, h2 {
+					text-align: center;
+					margin-bottom: 20px;
+				}
+				.header {
+					text-align: center;
+					margin-bottom: 30px;
+					padding: 15px;
+					background: #f8f9fa;
+					border-radius: 8px;
+				}
+				.summary-box {
+					display: flex;
+					justify-content: space-around;
+					margin: 20px 0;
+					padding: 15px;
+					background: #e9ecef;
+					border-radius: 8px;
+					font-weight: bold;
+				}
+				table {
+					width: 100%;
+					border-collapse: collapse;
+					margin: 20px 0;
+				}
+				th, td {
+					border: 1px solid #000;
+					padding: 10px;
+					text-align: left;
+				}
+				th {
+					background-color: #e9ecef;
+				}
+				.total {
+					text-align: right;
+					font-weight: bold;
+					font-size: 18px;
+					margin-top: 20px;
+				}
+			</style>
+		</head>
+		<body>
+			<div class="header">
+				<h1>История клиента</h1>
+				<p><strong>Имя:</strong> ${client.client}</p>
+				<p><strong>Телефон:</strong> ${client.phoneNumber?.[0] || '—'}</p>
+				<p><strong>Место:</strong> ${client.place || '—'}</p>
+				<p><strong>Текущий долг:</strong> ${client.credit || 0} сомони</p>
+			</div>
+
+			<div class="summary-box">
+				<div>Всего задолженно: ${totalDebtHistory.toFixed(2)} сомони</div>
+				<div>Всего выплачено: ${totalPaymentHistory.toFixed(2)} сомони</div>
+			</div>
+
+			<h2>История долгов</h2>
+			${renderHistoryTable(client.creditHistory || [], ['Дата', 'Сумма', 'Что купил'])}
+
+			<h2>История выплат</h2>
+			${renderHistoryTable(client.viruchka || [], ['Дата', 'Сумма', 'Способ оплаты'])}
+
+			<script>
+				setTimeout(() => window.print(), 500);
+			</script>
+		</body>
+		</html>
+	`;
+
+	const win = window.open('', '_blank');
+	win.document.write(printContent);
+	win.document.close();
+	win.focus();
+}
+
+// Вспомогательная функция для генерации таблицы
+function renderHistoryTable(data, headers) {
+	if (data.length === 0) {
+		return '<p>Нет записей</p>';
+	}
+	
+	let html = '<table><thead><tr>';
+	headers.forEach(header => {
+		html += `<th>${header}</th>`;
+	});
+	html += '</tr></thead><tbody>';
+	
+	data.forEach(row => {
+		html += '<tr>';
+		row.forEach(cell => {
+			html += `<td>${cell || '—'}</td>`;
+		});
+		html += '</tr>';
+	});
+	
+	html += '</tbody></table>';
+	return html;
+}
+
+
+/**
+ * Создает HTML для одной строки товара в модалке накладной (#invoiceItems).
+ * @param {string} name - Название товара.
+ * @param {number} qty - Количество.
+ * @param {number} price - Цена за единицу.
+ */
+function createInvoiceItemHtml(name = '', qty = 1, price = 0) {
+    // Используем встроенный обработчик для удаления, так как кнопки генерируются динамически
+    return `
+        <div class="invoice-item" style="display: flex; gap: 10px; margin-bottom: 8px;">
+            <input type="text" class="item-name form-input" placeholder="Товар" value="${name}" required style="flex-grow: 3;"/>
+            <input type="number" class="item-qty form-input" placeholder="Кол-во" min="1" value="${qty}" required style="width: 80px;"/>
+            <input type="number" class="item-price form-input" placeholder="Цена" min="0" step="0.01" value="${price.toFixed(2)}" required style="width: 100px;"/>
+            <button type="button" class="btn delete-btn remove-item" onclick="this.parentElement.remove()">Удалить</button>
+        </div>
+    `;
+}
+/**
+ * Собирает выбранные долги, парсит их и заполняет модалку #invoiceDialog.
+ * @param {Object} client - Объект клиента (должен содержать id).
+ */
+function loadInvoiceModalFromDebt(client) {
+    const selectedItemsData = [];
+    const checkboxes = dialogInfo.querySelectorAll('.invoice-checkbox:checked');
+    const invoiceDialog = document.getElementById('invoiceDialog');
+    const invoiceItemsContainer = document.getElementById('invoiceItems');
+    const invoiceClientSelect = document.getElementById('invoiceClient');
+
+    if (checkboxes.length === 0) {
+        alert('🚫 Пожалуйста, выберите хотя бы один товар для создания накладной.');
+        return;
+    }
+
+    // 1. Собираем и парсим данные
+    checkboxes.forEach(checkbox => {
+        const index = parseInt(checkbox.value);
+        const item = client.creditHistory[index];
+        const details = item[2] || '';
+        const totalAmount = parseFloat(item[1].replace(/[^0-9.]/g, '')) || 0; 
+        
+        let name = details;
+        let qty = 1;
+        let price = totalAmount; // По умолчанию, общая сумма
+
+        // Попытка парсинга формата "Товар 54штX90 сомони"
+        const match = details.match(/(.+) (\d+)штX([\d\.]+) сомони/i);
+        
+        if (match) {
+            name = match[1].trim();
+            qty = parseInt(match[2]);
+            price = parseFloat(match[3]);
+        } 
+        
+        selectedItemsData.push({ name, qty, price });
+    });
+
+    // 2. Настройка поля выбора клиента (Интеграция)
+    if (invoiceClientSelect && client.id) {
+        // Очистка, сохраняя первую опцию
+        const defaultOption = invoiceClientSelect.options[0];
+        invoiceClientSelect.innerHTML = '';
+        invoiceClientSelect.appendChild(defaultOption);
+
+        // Добавляем только текущего клиента и выбираем его по ID
+        const clientOption = new Option(client.client, client.id, true, true); 
+        invoiceClientSelect.appendChild(clientOption);
+
+        // Блокируем элемент, чтобы пользователь не мог его изменить
+        invoiceClientSelect.disabled = true;
+    }
+
+    // 3. Заполняем остальные поля
+    
+    // Устанавливаем текущую дату
+    document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
+
+    // Заполняем список товаров
+    invoiceItemsContainer.innerHTML = ''; // Очистка
+    selectedItemsData.forEach(item => {
+        invoiceItemsContainer.innerHTML += createInvoiceItemHtml(item.name, item.qty, item.price);
+    });
+
+    // 4. Открываем модалку накладной
+    dialogInfo.close(); // Закрываем модалку информации
+    invoiceDialog.showModal();
 }
