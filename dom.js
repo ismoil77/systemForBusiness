@@ -57,31 +57,31 @@ const plusBtnInfo = document.querySelector('.plusBtnInfo')
 const minusBtnInfo = document.querySelector('.minusBtnInfo')
 const dialogInfoClose = document.querySelector('.dialogInfoClose')
 // === ИСПРАВЛЕНИЕ МНОЖЕСТВЕННЫХ ЗАПРОСОВ ===
-let currentClientId = null  // Хранит ID открытого клиента
-let isProcessing = false    // Флаг: идёт ли сейчас запрос
+let currentClientId = null // Хранит ID открытого клиента
+let isProcessing = false // Флаг: идёт ли сейчас запрос
 
 // Обработчик кнопки "Добавить долг" (подписываемся ОДИН РАЗ)
 plusBtnInfo.addEventListener('click', async () => {
 	// Если диалог закрыт ИЛИ уже идёт обработка - ничего не делаем
 	if (!currentClientId || isProcessing) return
-	
+
 	// Ищем клиента по сохранённому ID
 	const client = fullClientList.find(c => c.id === currentClientId)
 	if (!client) return
-	
+
 	// БЛОКИРУЕМ КНОПКУ
 	isProcessing = true
 	plusBtnInfo.disabled = true
 	plusBtnInfo.textContent = '⏳ Добавление...'
 	plusBtnInfo.style.opacity = '0.6'
-	
+
 	try {
 		// Вызываем функцию добавления долга
 		await addDebt(client)
 		qarzNimaInfo.value = ''
-	qarzNechiInfo.value = ''
-	qarzNarkhInfo.value = ''
-	addDolgDate.value = todayISO
+		qarzNechiInfo.value = ''
+		qarzNarkhInfo.value = ''
+		addDolgDate.value = todayISO
 		// Диалог НЕ закрываем - можно добавить ещё долгов
 	} catch (error) {
 		console.error('Ошибка:', error)
@@ -98,15 +98,15 @@ plusBtnInfo.addEventListener('click', async () => {
 // Обработчик кнопки "Списать" (аналогично)
 minusBtnInfo.addEventListener('click', async () => {
 	if (!currentClientId || isProcessing) return
-	
+
 	const client = fullClientList.find(c => c.id === currentClientId)
 	if (!client) return
-	
+
 	isProcessing = true
 	minusBtnInfo.disabled = true
 	minusBtnInfo.textContent = '⏳ Списание...'
 	minusBtnInfo.style.opacity = '0.6'
-	
+
 	try {
 		await addPayment(client)
 		resetDebtPaymentFields()
@@ -334,19 +334,19 @@ export function renderClientTable(data) {
 function openClientInfo(client) {
 	if (!navigator.onLine) return
 	// === КНОПКА ПЕЧАТИ ИСТОРИИ КЛИЕНТА ===
-const printHistoryBtn = dialogInfo.querySelector('.print-client-history-btn');
-if (printHistoryBtn) {
-	printHistoryBtn.onclick = () => printClientHistory(client);
-}
+	const printHistoryBtn = dialogInfo.querySelector('.print-client-history-btn')
+	if (printHistoryBtn) {
+		printHistoryBtn.onclick = () => printClientHistory(client)
+	}
 	currentClientId = client.id
-	
+
 	clientInfo.textContent = `Клиент: ${client.client}`
 	placeInfo.textContent = `Место: ${client.place}`
 	creditInfo.innerHTML = `Долг: ${client.credit || 0} сомони<br>`
-	
+
 	renderDebtHistory(client)
 	renderPaymentHistory(client)
-	
+
 	dialogInfo.showModal()
 }
 function sumTransactionHistory(history) {
@@ -355,7 +355,7 @@ function sumTransactionHistory(history) {
 		const amountStr = item[1] || '0'
 		// Безопасно извлекаем число из строки "1000 сомони"
 		// Удаляем все, кроме цифр, точки и минуса
-		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0 
+		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0
 		return sum + amount
 	}, 0)
 }
@@ -373,7 +373,7 @@ function renderDebtHistory(client) {
 	// 1. Создание таблицы с новой колонкой для чекбоксов
 	let table =
 		'<table><tr><th>№</th><th><input type="checkbox" id="selectAllDebts"></th><th>Дата</th><th>Сумма</th><th>Что купил</th><th>Действия</th></tr>'
-	
+
 	// Используем client.creditHistory, который является объектом (массивом)
 	;(client.creditHistory || []).forEach((item, idx) => {
 		table += `
@@ -387,35 +387,37 @@ function renderDebtHistory(client) {
 			</tr>`
 	})
 	table += '</table>'
-    
-    // 2. Кнопка для создания накладной
-    const invoiceControlsHtml = `
+
+	// 2. Кнопка для создания накладной
+	const invoiceControlsHtml = `
         <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
             <button id="loadInvoiceModalBtn" class="btn info-btn">📄 Создать Накладную из выбранного</button>
             <label style="font-size: 14px; color: #555;">(Выберите долги ниже)</label>
         </div>
-    `;
+    `
 
-	creditInfo.innerHTML += invoiceControlsHtml + table; // Добавляем элементы в DOM
+	creditInfo.innerHTML += invoiceControlsHtml + table // Добавляем элементы в DOM
 
 	// === ОБРАБОТЧИКИ НОВОЙ ФУНКЦИОНАЛЬНОСТИ ===
 
-    // 1. Обработчик "Выбрать все"
-    const selectAllCheckbox = creditInfo.querySelector('#selectAllDebts');
-    selectAllCheckbox?.addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        creditInfo.querySelectorAll('.invoice-checkbox').forEach(cb => {
-            cb.checked = isChecked;
-        });
-    });
+	// 1. Обработчик "Выбрать все"
+	const selectAllCheckbox = creditInfo.querySelector('#selectAllDebts')
+	selectAllCheckbox?.addEventListener('change', e => {
+		const isChecked = e.target.checked
+		creditInfo.querySelectorAll('.invoice-checkbox').forEach(cb => {
+			cb.checked = isChecked
+		})
+	})
 
-    // 2. Обработчик кнопки "Создать Накладную"
-    creditInfo.querySelector('#loadInvoiceModalBtn')?.addEventListener('click', () => {
-        // Вызываем функцию, которая собирает данные и открывает модалку накладной
-        loadInvoiceModalFromDebt(client); 
-    });
-    
-    // 3. Обработчик УДАЛЕНИЯ ДОЛГА (С ЗАЩИТОЙ И ПЕРЕСЧЕТОМ)
+	// 2. Обработчик кнопки "Создать Накладную"
+	creditInfo
+		.querySelector('#loadInvoiceModalBtn')
+		?.addEventListener('click', () => {
+			// Вызываем функцию, которая собирает данные и открывает модалку накладной
+			loadInvoiceModalFromDebt(client)
+		})
+
+	// 3. Обработчик УДАЛЕНИЯ ДОЛГА (С ЗАЩИТОЙ И ПЕРЕСЧЕТОМ)
 	creditInfo.querySelectorAll('.delete-debt').forEach(btn => {
 		btn.addEventListener('click', async () => {
 			const idx = parseInt(btn.dataset.id)
@@ -441,7 +443,11 @@ function renderDebtHistory(client) {
 			if (newTotalDebts < totalPayments) {
 				alert(
 					`🚫 ЗАЩИТА (Несостыковка)! Нельзя удалить этот долг.\n\n` +
-						`После удаления: Общая сумма долгов (${newTotalDebts.toFixed(0)} сомони) будет меньше, чем Общая сумма выплат (${totalPayments.toFixed(0)} сомони).\n` +
+						`После удаления: Общая сумма долгов (${newTotalDebts.toFixed(
+							0
+						)} сомони) будет меньше, чем Общая сумма выплат (${totalPayments.toFixed(
+							0
+						)} сомони).\n` +
 						`Это приведет к отрицательному балансу.\n\n` +
 						`Сначала удалите часть выплат, чтобы освободить сумму долга, если это необходимо.`
 				)
@@ -454,7 +460,7 @@ function renderDebtHistory(client) {
 			try {
 				// Удаляем запись
 				const removed = history.splice(idx, 1)[0]
-				
+
 				// Полный пересчет баланса
 				const newCredit = Math.max(0, newTotalDebts - totalPayments)
 
@@ -897,15 +903,17 @@ createInvoiceBtn?.addEventListener('click', async () => {
 
 // Закрытие
 closeInvoiceDialog?.addEventListener('click', () => {
-    // Разблокировать поле клиента и очистить динамически добавленные опции
-    if (invoiceClientSelect) {
-        invoiceClientSelect.disabled = false;
-        // Восстанавливаем только опцию "Выберите клиента" (предполагаем, что она первая)
-        invoiceClientSelect.innerHTML = invoiceClientSelect.options[0]?.outerHTML || '<option value="">Выберите клиента</option>';
-    }
-    // Закрыть модалку
-    invoiceDialog.close();
-});
+	// Разблокировать поле клиента и очистить динамически добавленные опции
+	if (invoiceClientSelect) {
+		invoiceClientSelect.disabled = false
+		// Восстанавливаем только опцию "Выберите клиента" (предполагаем, что она первая)
+		invoiceClientSelect.innerHTML =
+			invoiceClientSelect.options[0]?.outerHTML ||
+			'<option value="">Выберите клиента</option>'
+	}
+	// Закрыть модалку
+	invoiceDialog.close()
+})
 
 // Добавление товара
 addItemBtn?.addEventListener('click', () => {
@@ -1671,16 +1679,14 @@ document
 	.getElementById('backupDataBtn')
 	?.addEventListener('click', createFullBackup)
 
-
-	
-	// === АВТОМАТИЧЕСКОЕ НАПОМИНАНИЕ О РЕЗЕРВНОЙ КОПИИ ===
+// === АВТОМАТИЧЕСКОЕ НАПОМИНАНИЕ О РЕЗЕРВНОЙ КОПИИ ===
 function checkAndShowBackupReminder() {
 	const lastBackup = localStorage.getItem('lastBackupDate')
 	const now = new Date().getTime()
 	const oneDay = 24 * 60 * 60 * 1000 // 1 день
-	
+
 	// Если прошло больше суток с последнего бэкапа
-	if (!lastBackup || (now - parseInt(lastBackup)) > oneDay) {
+	if (!lastBackup || now - parseInt(lastBackup) > oneDay) {
 		// Показываем красивое уведомление
 		const reminder = document.createElement('div')
 		reminder.className = 'backup-reminder'
@@ -1693,7 +1699,7 @@ function checkAndShowBackupReminder() {
 			</div>
 		`
 		document.body.appendChild(reminder)
-		
+
 		// Обработчик "Создать сейчас"
 		document.getElementById('backupNow').addEventListener('click', async () => {
 			reminder.remove()
@@ -1701,7 +1707,7 @@ function checkAndShowBackupReminder() {
 			localStorage.setItem('lastBackupDate', new Date().getTime().toString())
 			alert('✅ Резервная копия создана!')
 		})
-		
+
 		// Обработчик "Позже"
 		document.getElementById('backupLater').addEventListener('click', () => {
 			reminder.remove()
@@ -1732,17 +1738,17 @@ if (originalBackupBtn) {
 function printClientHistory(client) {
 	// Общая сумма долгов
 	const totalDebtHistory = (client.creditHistory || []).reduce((sum, item) => {
-		const amountStr = item[1] || '0';
-		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0;
-		return sum + amount;
-	}, 0);
+		const amountStr = item[1] || '0'
+		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0
+		return sum + amount
+	}, 0)
 
 	// Общая сумма выплат
 	const totalPaymentHistory = (client.viruchka || []).reduce((sum, item) => {
-		const amountStr = item[1] || '0';
-		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0;
-		return sum + amount;
-	}, 0);
+		const amountStr = item[1] || '0'
+		const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, '')) || 0
+		return sum + amount
+	}, 0)
 
 	const printContent = `
 		<!DOCTYPE html>
@@ -1814,7 +1820,11 @@ function printClientHistory(client) {
 			</div>
 
 			<h2>История долгов</h2>
-			${renderHistoryTable(client.creditHistory || [], ['Дата', 'Сумма', 'Что купил'])}
+			${renderHistoryTable(client.creditHistory || [], [
+				'Дата',
+				'Сумма',
+				'Что купил',
+			])}
 
 			<h2>История выплат</h2>
 			${renderHistoryTable(client.viruchka || [], ['Дата', 'Сумма', 'Способ оплаты'])}
@@ -1824,38 +1834,37 @@ function printClientHistory(client) {
 			</script>
 		</body>
 		</html>
-	`;
+	`
 
-	const win = window.open('', '_blank');
-	win.document.write(printContent);
-	win.document.close();
-	win.focus();
+	const win = window.open('', '_blank')
+	win.document.write(printContent)
+	win.document.close()
+	win.focus()
 }
 
 // Вспомогательная функция для генерации таблицы
 function renderHistoryTable(data, headers) {
 	if (data.length === 0) {
-		return '<p>Нет записей</p>';
+		return '<p>Нет записей</p>'
 	}
-	
-	let html = '<table><thead><tr>';
-	headers.forEach(header => {
-		html += `<th>${header}</th>`;
-	});
-	html += '</tr></thead><tbody>';
-	
-	data.forEach(row => {
-		html += '<tr>';
-		row.forEach(cell => {
-			html += `<td>${cell || '—'}</td>`;
-		});
-		html += '</tr>';
-	});
-	
-	html += '</tbody></table>';
-	return html;
-}
 
+	let html = '<table><thead><tr>'
+	headers.forEach(header => {
+		html += `<th>${header}</th>`
+	})
+	html += '</tr></thead><tbody>'
+
+	data.forEach(row => {
+		html += '<tr>'
+		row.forEach(cell => {
+			html += `<td>${cell || '—'}</td>`
+		})
+		html += '</tr>'
+	})
+
+	html += '</tbody></table>'
+	return html
+}
 
 /**
  * Создает HTML для одной строки товара в модалке накладной (#invoiceItems).
@@ -1864,16 +1873,20 @@ function renderHistoryTable(data, headers) {
  * @param {number} price - Цена за единицу.
  */
 function createInvoiceItemHtml(name = '', qty = 1, price = 0) {
-    // Используем встроенный обработчик для удаления, так как кнопки генерируются динамически
-    return `
+	// Используем встроенный обработчик для удаления, так как кнопки генерируются динамически
+	return `
         <div class="invoice-item" style="display: flex; gap: 10px; margin-bottom: 8px;">
             <input type="text" class="item-name form-input" placeholder="Товар" value="${name}" required style="flex-grow: 3;"/>
             <input type="number" class="item-qty form-input" placeholder="Кол-во" min="1" value="${qty}" required style="width: 80px;"/>
-            <input type="number" class="item-price form-input" placeholder="Цена" min="0" step="0.01" value="${price.toFixed(2)}" required style="width: 100px;"/>
+            <input type="number" class="item-price form-input" placeholder="Цена" min="0" step="0.01" value="${price.toFixed(
+							2
+						)}" required style="width: 100px;"/>
             <button type="button" class="btn delete-btn remove-item" onclick="this.parentElement.remove()">Удалить</button>
         </div>
-    `;
+    `
 }
+
+
 /**
  * Собирает выбранные долги, парсит их и заполняет модалку #invoiceDialog.
  * @param {Object} client - Объект клиента (должен содержать id).
@@ -1901,45 +1914,63 @@ function loadInvoiceModalFromDebt(client) {
         let qty = 1;
         let price = totalAmount; // По умолчанию, общая сумма
 
-        // Попытка парсинга формата "Товар 54штX90 сомони"
-        const match = details.match(/(.+) (\d+)штX([\d\.]+) сомони/i);
+        // УНИВЕРСАЛЬНЫЙ ПАРСИНГ: Поддержка "X", "×", "x"
+        // "Жинжони 10шт×170 сомони" → name="Жинжони", qty=10, price=170
+        // "Загер 5штX36 сомони" → name="Загер", qty=5, price=36
+        const match = details.match(/^(.+?)\s+(\d+)\s*шт[X×x]\s*([\d\.]+)/i);
         
         if (match) {
             name = match[1].trim();
             qty = parseInt(match[2]);
             price = parseFloat(match[3]);
-        } 
+        } else {
+            // Если не удалось распарсить - берём всю строку как название
+            name = details;
+            qty = 1;
+            price = totalAmount;
+        }
         
         selectedItemsData.push({ name, qty, price });
     });
 
-    // 2. Настройка поля выбора клиента (Интеграция)
+    // 2. Настройка поля выбора клиента
     if (invoiceClientSelect && client.id) {
-        // Очистка, сохраняя первую опцию
-        const defaultOption = invoiceClientSelect.options[0];
-        invoiceClientSelect.innerHTML = '';
-        invoiceClientSelect.appendChild(defaultOption);
-
-        // Добавляем только текущего клиента и выбираем его по ID
-        const clientOption = new Option(client.client, client.id, true, true); 
-        invoiceClientSelect.appendChild(clientOption);
-
-        // Блокируем элемент, чтобы пользователь не мог его изменить
+        // Обновляем ГЛОБАЛЬНЫЙ список клиентов
+        invoiceClients = [...fullClientList];
+       
+        
+        // Очищаем и добавляем только текущего клиента
+        invoiceClientSelect.innerHTML = `<option value="${client.id}" selected>${client.client}</option>`;
         invoiceClientSelect.disabled = true;
+        
+       
     }
 
-    // 3. Заполняем остальные поля
-    
-    // Устанавливаем текущую дату
-    document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
+    // 3. Устанавливаем текущую дату
+    const dateInput = document.getElementById('invoiceDate');
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
 
-    // Заполняем список товаров
-    invoiceItemsContainer.innerHTML = ''; // Очистка
+    // 4. Заполняем список товаров с обновлением превью
+    invoiceItemsContainer.innerHTML = '';
     selectedItemsData.forEach(item => {
-        invoiceItemsContainer.innerHTML += createInvoiceItemHtml(item.name, item.qty, item.price);
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'invoice-item';
+        itemDiv.innerHTML = `
+            <input type="text" class="item-name" placeholder="Товар" value="${item.name}" required>
+            <input type="number" class="item-qty" placeholder="Кол-во" min="1" value="${item.qty}" required>
+            <input type="number" class="item-price" placeholder="Цена" min="0" step="0.01" value="${item.price.toFixed(2)}" required>
+            <button type="button" class="btn delete-btn remove-item">Удалить</button>
+        `;
+        invoiceItemsContainer.appendChild(itemDiv);
     });
 
-    // 4. Открываем модалку накладной
-    dialogInfo.close(); // Закрываем модалку информации
+    // 5. Переподключаем обработчики
+    addItemEventListeners();
+    updateInvoicePreview(); // Обновляем превью
+
+    // 6. Открываем модалку накладной
+    dialogInfo.close();
     invoiceDialog.showModal();
 }
