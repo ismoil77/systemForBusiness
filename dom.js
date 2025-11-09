@@ -1190,23 +1190,23 @@ function renderInvoicesList(clientRecords) {
 			)
 		})
 	})
-	// НОВЫЙ КОД: Обработчик двойной печати
-	document.querySelectorAll('.print-invoice-double-btn').forEach(btn => {
-		btn.addEventListener('click', e => {
-			const invoiceDiv = e.target.closest('.invoice-item-preview')
-			const invoice = JSON.parse(decodeURIComponent(invoiceDiv.dataset.invoice))
-			const clientId = Number(invoiceDiv.dataset.clientId)
-			const client = fullClientList.find(c => c.id === clientId)
+// НОВЫЙ КОД: Обработчик двойной печати
+document.querySelectorAll('.print-invoice-double-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+        const invoiceDiv = e.target.closest('.invoice-item-preview')
+        const invoice = JSON.parse(decodeURIComponent(invoiceDiv.dataset.invoice))
+        const clientId = Number(invoiceDiv.dataset.clientId)
+        const client = fullClientList.find(c => c.id === clientId)
 
-			// Вызываем НОВУЮ функцию (создадим её в шаге 3)
-			printInvoiceDouble(
-				invoice,
-				client?.client || 'Не указан',
-				client?.place || '',
-				client?.phoneNumber?.[0] || ''
-			)
-		})
-	})
+        // Вызываем НОВУЮ функцию (создадим её в шаге 3)
+        printInvoiceDouble(
+            invoice,
+            client?.client || 'Не указан',
+            client?.place || '',
+            client?.phoneNumber?.[0] || ''
+        )
+    })
+})
 	document.querySelectorAll('.download-invoice-btn').forEach(btn => {
 		btn.addEventListener('click', async e => {
 			const invoiceDiv = e.target.closest('.invoice-item-preview')
@@ -1903,95 +1903,93 @@ function createInvoiceItemHtml(name = '', qty = 1, price = 0) {
     `
 }
 
+
 /**
  * Собирает выбранные долги, парсит их и заполняет модалку #invoiceDialog.
  * @param {Object} client - Объект клиента (должен содержать id).
  */
 function loadInvoiceModalFromDebt(client) {
-	const selectedItemsData = []
-	const checkboxes = dialogInfo.querySelectorAll('.invoice-checkbox:checked')
-	const invoiceDialog = document.getElementById('invoiceDialog')
-	const invoiceItemsContainer = document.getElementById('invoiceItems')
-	const invoiceClientSelect = document.getElementById('invoiceClient')
+    const selectedItemsData = [];
+    const checkboxes = dialogInfo.querySelectorAll('.invoice-checkbox:checked');
+    const invoiceDialog = document.getElementById('invoiceDialog');
+    const invoiceItemsContainer = document.getElementById('invoiceItems');
+    const invoiceClientSelect = document.getElementById('invoiceClient');
 
-	if (checkboxes.length === 0) {
-		alert('🚫 Пожалуйста, выберите хотя бы один товар для создания накладной.')
-		return
-	}
+    if (checkboxes.length === 0) {
+        alert('🚫 Пожалуйста, выберите хотя бы один товар для создания накладной.');
+        return;
+    }
 
-	// 1. Собираем и парсим данные
-	checkboxes.forEach(checkbox => {
-		const index = parseInt(checkbox.value)
-		const item = client.creditHistory[index]
-		const details = item[2] || ''
-		const totalAmount = parseFloat(item[1].replace(/[^0-9.]/g, '')) || 0
+    // 1. Собираем и парсим данные
+    checkboxes.forEach(checkbox => {
+        const index = parseInt(checkbox.value);
+        const item = client.creditHistory[index];
+        const details = item[2] || '';
+        const totalAmount = parseFloat(item[1].replace(/[^0-9.]/g, '')) || 0; 
+        
+        let name = details;
+        let qty = 1;
+        let price = totalAmount; // По умолчанию, общая сумма
 
-		let name = details
-		let qty = 1
-		let price = totalAmount // По умолчанию, общая сумма
+        // УНИВЕРСАЛЬНЫЙ ПАРСИНГ: Поддержка "X", "×", "x"
+        // "Жинжони 10шт×170 сомони" → name="Жинжони", qty=10, price=170
+        // "Загер 5штX36 сомони" → name="Загер", qty=5, price=36
+        const match = details.match(/^(.+?)\s+(\d+)\s*шт[X×x]\s*([\d\.]+)/i);
+        
+        if (match) {
+            name = match[1].trim();
+            qty = parseInt(match[2]);
+            price = parseFloat(match[3]);
+        } else {
+            // Если не удалось распарсить - берём всю строку как название
+            name = details;
+            qty = 1;
+            price = totalAmount;
+        }
+        
+        selectedItemsData.push({ name, qty, price });
+    });
 
-		// УНИВЕРСАЛЬНЫЙ ПАРСИНГ: Поддержка "X", "×", "x"
-		// "Жинжони 10шт×170 сомони" → name="Жинжони", qty=10, price=170
-		// "Загер 5штX36 сомони" → name="Загер", qty=5, price=36
-		const match = details.match(/^(.+?)\s+(\d+)\s*шт[X×x]\s*([\d\.]+)/i)
+    // 2. Настройка поля выбора клиента
+    if (invoiceClientSelect && client.id) {
+        // Обновляем ГЛОБАЛЬНЫЙ список клиентов
+        invoiceClients = [...fullClientList];
+       
+        
+        // Очищаем и добавляем только текущего клиента
+        invoiceClientSelect.innerHTML = `<option value="${client.id}" selected>${client.client}</option>`;
+        invoiceClientSelect.disabled = true;
+        
+       
+    }
 
-		if (match) {
-			name = match[1].trim()
-			qty = parseInt(match[2])
-			price = parseFloat(match[3])
-		} else {
-			// Если не удалось распарсить - берём всю строку как название
-			name = details
-			qty = 1
-			price = totalAmount
-		}
+    // 3. Устанавливаем текущую дату
+    const dateInput = document.getElementById('invoiceDate');
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
 
-		selectedItemsData.push({ name, qty, price })
-	})
-
-	// 2. Настройка поля выбора клиента
-	if (invoiceClientSelect && client.id) {
-		// Обновляем ГЛОБАЛЬНЫЙ список клиентов
-		invoiceClients = [...fullClientList]
-
-		// Очищаем и добавляем только текущего клиента
-		invoiceClientSelect.innerHTML = `<option value="${client.id}" selected>${client.client}</option>`
-		invoiceClientSelect.disabled = true
-	}
-
-	// 3. Устанавливаем текущую дату
-	const dateInput = document.getElementById('invoiceDate')
-	if (dateInput) {
-		dateInput.value = new Date().toISOString().split('T')[0]
-	}
-
-	// 4. Заполняем список товаров с обновлением превью
-	invoiceItemsContainer.innerHTML = ''
-	selectedItemsData.forEach(item => {
-		const itemDiv = document.createElement('div')
-		itemDiv.className = 'invoice-item'
-		itemDiv.innerHTML = `
-            <input type="text" class="item-name" placeholder="Товар" value="${
-							item.name
-						}" required>
-            <input type="number" class="item-qty" placeholder="Кол-во" min="1" value="${
-							item.qty
-						}" required>
-            <input type="number" class="item-price" placeholder="Цена" min="0" step="0.01" value="${item.price.toFixed(
-							2
-						)}" required>
+    // 4. Заполняем список товаров с обновлением превью
+    invoiceItemsContainer.innerHTML = '';
+    selectedItemsData.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'invoice-item';
+        itemDiv.innerHTML = `
+            <input type="text" class="item-name" placeholder="Товар" value="${item.name}" required>
+            <input type="number" class="item-qty" placeholder="Кол-во" min="1" value="${item.qty}" required>
+            <input type="number" class="item-price" placeholder="Цена" min="0" step="0.01" value="${item.price.toFixed(2)}" required>
             <button type="button" class="btn delete-btn remove-item">Удалить</button>
-        `
-		invoiceItemsContainer.appendChild(itemDiv)
-	})
+        `;
+        invoiceItemsContainer.appendChild(itemDiv);
+    });
 
-	// 5. Переподключаем обработчики
-	addItemEventListeners()
-	updateInvoicePreview() // Обновляем превью
+    // 5. Переподключаем обработчики
+    addItemEventListeners();
+    updateInvoicePreview(); // Обновляем превью
 
-	// 6. Открываем модалку накладной
-	dialogInfo.close()
-	invoiceDialog.showModal()
+    // 6. Открываем модалку накладной
+    dialogInfo.close();
+    invoiceDialog.showModal();
 }
 function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 	const invoiceDate = new Date(invoice.createdAt)
@@ -2047,7 +2045,7 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 					position: absolute;
 					width: 210mm;
 					height: 148.5mm;
-					padding: 8mm;
+					padding: 15mm;
 					left: 0;
 				}
 				
@@ -2064,55 +2062,50 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 				
 				h1 {
 					text-align: center;
-					margin-bottom: 6px;
-					font-size: 18px;
+					margin-bottom: 10px;
+					font-size: 24px;
 				}
 				
 				.header, .details {
 					display: flex;
-					justify-content: space-between;
-					margin-bottom: 8px;
+		
 					flex-wrap: wrap;
-					gap: 8px;
 				}
 				
 				.header div, .details div {
 					flex: 1 1 45%;
+					
 				}
 				
 				label {
 					font-weight: bold;
-					font-size: 10px;
-					display: block;
-					margin-bottom: 2px;
 				}
 				
 				input[type="text"], input[type="number"], input[type="date"] {
 					width: 100%;
-					height: 22px;
-					padding: 3px;
+					height: 30px;
+					padding: 5px;
+					margin-top: 4px;
 					border: 1px solid #ccc;
-					border-radius: 3px;
+					border-radius: 4px;
 					font-weight: 600;
-					font-size: 10px;
+					font-size: medium;
 				}
 				
 				table {
 					width: 100%;
 					border-collapse: collapse;
-					margin-top: 8px;
-					font-size: 9px;
+					margin-top: 10px;
 				}
 				
 				th, td {
 					border: 1px solid #888;
-					padding: 4px;
+					padding: 8px;
 					text-align: left;
 				}
 				
 				th {
 					background-color: #f0f0f0;
-					font-weight: bold;
 				}
 				
 				.sum {
@@ -2122,34 +2115,33 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 				.total {
 					text-align: right;
 					font-weight: bold;
-					margin-top: 8px;
-					font-size: 13px;
+					margin-top: 10px;
+					font-size: 16px;
 				}
 				
 				.signature {
-					margin-top: 12px;
+					margin-top: 30px;
 					display: flex;
 					justify-content: space-between;
 				}
 				
 				.signature div {
 					text-align: center;
-					font-size: 9px;
 				}
 				
 				.signature span {
 					display: block;
 					border-top: 1px solid #000;
-					width: 150px;
-					margin: 3px auto 0;
-					padding-top: 3px;
+					width: 200px;
+					margin: 5px auto 0;
+					padding-top: 5px;
 				}
 				
 				.signature img {
-					height: 45px;
-					width: 45px;
+					height: 60px;
+					width: 60px;
 					display: block;
-					margin: 0 auto 3px;
+					margin: 0 auto 5px;
 				}
 				
 				@media print {
@@ -2198,9 +2190,9 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 						<thead>
 							<tr>
 								<th>Наименование товара</th>
-								<th style="width: 15%;">Кол-во</th>
-								<th style="width: 18%;">Цена</th>
-								<th style="width: 18%;">Сумма</th>
+								<th>Кол-во</th>
+								<th>Цена</th>
+								<th>Сумма</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -2209,7 +2201,7 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 					</table>
 
 					<div class="total">
-						Общая сумма: ${invoice.totalAmount.toFixed(2)} сомони.
+						Общая сумма: <span id="totalSum">${invoice.totalAmount.toFixed(2)}</span> сомони.
 					</div>
 
 					<div class="signature">
@@ -2253,9 +2245,9 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 						<thead>
 							<tr>
 								<th>Наименование товара</th>
-								<th style="width: 15%;">Кол-во</th>
-								<th style="width: 18%;">Цена</th>
-								<th style="width: 18%;">Сумма</th>
+								<th>Кол-во</th>
+								<th>Цена</th>
+								<th>Сумма</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -2264,7 +2256,7 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 					</table>
 
 					<div class="total">
-						Общая сумма: ${invoice.totalAmount.toFixed(2)} сомони.
+						Общая сумма: <span id="totalSum">${invoice.totalAmount.toFixed(2)}</span> сомони.
 					</div>
 
 					<div class="signature">
@@ -2280,6 +2272,7 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 			</div>
 
 			<script>
+				// Автоматическая печать через 1 секунду
 				setTimeout(() => window.print(), 500);
 			</script>
 		</body>
