@@ -109,7 +109,10 @@ body {
 	color: white;
 }
 
-.print-btn, #createInvoiceBtn, #viewInvoicesBtn, #openActivityLog {
+.print-btn,
+#createInvoiceBtn,
+#viewInvoicesBtn,
+#openActivityLog {
 	background: var(--gray);
 	color: white;
 }
@@ -189,7 +192,7 @@ form select:focus {
 }
 
 /* === ПОЛЕ ВВОДА ТЕЛЕФОНА === */
-input[type="tel"] {
+input[type='tel'] {
 	direction: ltr;
 }
 
@@ -262,33 +265,34 @@ input[type="tel"] {
 		flex-direction: column;
 		align-items: stretch;
 	}
-	
+
 	.dataToday {
 		text-align: left;
 	}
-	
+
 	.searchClient {
 		min-width: auto;
 	}
-	
+
 	table {
 		font-size: 0.85rem;
 	}
-	
-	th, td {
+
+	th,
+	td {
 		padding: 12px 8px;
 	}
-	
+
 	.btn {
 		padding: 10px 16px;
 		font-size: 0.95rem;
 	}
-	
+
 	dialog {
 		width: 95%;
 		padding: 20px;
 	}
-	
+
 	.invoice-item {
 		flex-direction: column;
 	}
@@ -299,24 +303,25 @@ input[type="tel"] {
 	body {
 		padding: 12px;
 	}
-	
+
 	.container {
 		padding: 16px;
 	}
-	
+
 	table {
 		font-size: 0.8rem;
 	}
-	
-	th, td {
+
+	th,
+	td {
 		padding: 10px 6px;
 	}
-	
+
 	.btn {
 		width: 100%;
 		justify-content: center;
 	}
-	
+
 	/* Скрываем некоторые столбцы на мобильных */
 	@media (max-width: 480px) {
 		/* td:nth-child(4), th:nth-child(4) {
@@ -353,8 +358,12 @@ input[type="tel"] {
 }
 
 @keyframes spin {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
 }
 
 /* === ПЕЧАТЬ === */
@@ -363,24 +372,23 @@ input[type="tel"] {
 		background: white;
 		padding: 0;
 	}
-	
+
 	.container,
 	.offline-warning,
 	.no-print {
 		display: none !important;
 	}
-	
+
 	table {
 		box-shadow: none;
 		border: 1px solid #000;
 	}
-	
+
 	th {
 		background: #f2f2f2 !important;
 		color: #000 !important;
 	}
 }
-
 
 .dialogInfo input {
 	width: 100%;
@@ -429,7 +437,7 @@ select {
 	-webkit-appearance: none;
 	-moz-appearance: none;
 	appearance: none;
-	
+
 	/* Основные стили */
 	width: 100%;
 	padding: 12px 16px;
@@ -472,16 +480,16 @@ select option {
 	}
 }
 textarea[readonly] {
-  width: 250px;
-  height: auto;
-  min-height: 30px;
-  resize: none;
-  overflow-wrap: break-word; /* перенос слов */
-  white-space: pre-wrap;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 4px 6px;
-  background-color: #f8f8f8;
+	width: 250px;
+	height: auto;
+	min-height: 30px;
+	resize: none;
+	overflow-wrap: break-word; /* перенос слов */
+	white-space: pre-wrap;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 4px 6px;
+	background-color: #f8f8f8;
 }
 
 /* Напоминание о резервной копии */
@@ -526,17 +534,22 @@ textarea[readonly] {
 }
 
 @keyframes fadeIn {
-	from { opacity: 0; }
-	to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
 @keyframes slideIn {
-	from { 
+	from {
 		opacity: 0;
 		transform: translateY(-20px);
 	}
-	to { 
+	to {
 		opacity: 1;
 		transform: translateY(0);
 	}
 }
+
