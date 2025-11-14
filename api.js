@@ -298,3 +298,159 @@ export async function updateInvoicesForClient(clientId, newClientName) {
 		// НЕ пробрасываем ошибку — чтобы не ломать основное обновление
 	}
 }
+// === ДОБАВИТЬ В КОНЕЦ api.js ===
+
+// === 6. УПРАВЛЕНИЕ ЗОНАМИ ===
+const ZONE_API = 'https://7cf074eeac80e141.mokky.dev/zone';
+
+/**
+ * Получает список всех зон
+ * @returns {Promise<Array>} — массив объектов зон [{id, value, name}, ...]
+ */
+export async function getZones() {
+	if (!navigator.onLine) {
+		alert('🚫 Нет интернета');
+		return [];
+	}
+
+	try {
+		const response = await fetch(ZONE_API);
+		if (!response.ok) throw new Error(`HTTP ${response.status}`);
+		
+		const zones = await response.json();
+		return zones.sort((a, b) => a.name.localeCompare(b.name)); // Сортировка по name
+	} catch (error) {
+		console.error('❌ Ошибка загрузки зон:', error);
+		return [];
+	}
+}
+
+/**
+ * Добавляет новую зону
+ * @param {string} zoneName — отображаемое название
+ * @param {string} zoneValue — значение для value (опционально)
+ * @returns {Promise<boolean>}
+ */
+export async function addZone(zoneName, zoneValue = null) {
+	if (!navigator.onLine) {
+		alert('🚫 Нет интернета');
+		return false;
+	}
+
+	const trimmedName = zoneName.trim();
+	const trimmedValue = (zoneValue || zoneName).trim();
+	
+	if (!trimmedName || !trimmedValue) {
+		alert('❌ Название зоны не может быть пустым');
+		return false;
+	}
+
+	try {
+		// Проверка на дубликат по value
+		const existing = await getZones();
+		if (existing.some(z => z.value.toLowerCase() === trimmedValue.toLowerCase())) {
+			alert('❌ Зона с таким значением уже существует');
+			return false;
+		}
+
+		const response = await fetch(ZONE_API, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ 
+				name: trimmedName,
+				value: trimmedValue
+			})
+		});
+
+		if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+		await logActivity(`Добавил зону: "${trimmedName}" (value: ${trimmedValue})`);
+		return true;
+	} catch (error) {
+		console.error('❌ Ошибка добавления зоны:', error);
+		alert('❌ Не удалось добавить зону');
+		return false;
+	}
+}
+
+/**
+ * Удаляет зону
+ * @param {number} zoneId — ID зоны
+ * @param {string} zoneName — название (для лога)
+ * @returns {Promise<boolean>}
+ */
+export async function deleteZone(zoneId, zoneName) {
+	if (!navigator.onLine) {
+		alert('🚫 Нет интернета');
+		return false;
+	}
+
+	try {
+		const response = await fetch(`${ZONE_API}/${zoneId}`, {
+			method: 'DELETE'
+		});
+
+		if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+		await logActivity(`Удалил зону: "${zoneName}"`);
+		return true;
+	} catch (error) {
+		console.error('❌ Ошибка удаления зоны:', error);
+		alert('❌ Не удалось удалить зону');
+		return false;
+	}
+}
+
+/**
+ * Обновляет зону
+ * @param {number} zoneId — ID зоны
+ * @param {string} newName — новое отображаемое название
+ * @param {string} newValue — новое значение value
+ * @param {string} oldName — старое название (для лога)
+ * @returns {Promise<boolean>}
+ */
+export async function updateZone(zoneId, newName, newValue, oldName) {
+	if (!navigator.onLine) {
+		alert('🚫 Нет интернета');
+		return false;
+	}
+
+	const trimmedName = newName.trim();
+	const trimmedValue = newValue.trim();
+	
+	if (!trimmedName || !trimmedValue) {
+		alert('❌ Поля не могут быть пустыми');
+		return false;
+	}
+
+	try {
+		// Проверка на дубликат value (кроме текущей зоны)
+		const existing = await getZones();
+		const duplicate = existing.find(
+			z => z.id !== zoneId && z.value.toLowerCase() === trimmedValue.toLowerCase()
+		);
+		
+		if (duplicate) {
+			alert('❌ Зона с таким значением уже существует');
+			return false;
+		}
+
+		const response = await fetch(`${ZONE_API}/${zoneId}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ 
+				name: trimmedName,
+				value: trimmedValue
+			})
+		});
+
+		if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+		await logActivity(`Обновил зону: "${oldName}" → "${trimmedName}" (value: ${trimmedValue})`);
+		return true;
+	} catch (error) {
+		console.error('❌ Ошибка обновления зоны:', error);
+		alert('❌ Не удалось обновить зону');
+		return false;
+	}
+}

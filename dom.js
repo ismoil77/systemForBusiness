@@ -8,6 +8,7 @@ import {
 	postData,
 	putData,
 	updateInvoicesForClient,
+	getZones, addZone, deleteZone, updateZone
 } from './api.js'
 let fullClientList = []
 let allInvoicesMap = new Map() // id → invoice
@@ -2284,3 +2285,250 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 	win.document.close()
 	win.focus()
 }
+
+
+
+
+
+let allZones = []; // Глобальный кэш зон
+
+/**
+ * Загружает зоны с сервера и заполняет все select[name="place"]
+ */
+export async function loadAndPopulateZones() {
+	if (!navigator.onLine) return;
+
+	try {
+		allZones = await getZones();
+		
+		// Находим ВСЕ селекты с name="place"
+		const placeSelects = document.querySelectorAll('select[name="place"]');
+		
+		placeSelects.forEach(select => {
+			// Сохраняем текущий выбор (если есть)
+			const currentValue = select.value;
+			
+			// Очищаем и добавляем дефолтный option
+			select.innerHTML = '<option value="">Выберите место</option>';
+			
+			// Добавляем зоны
+			allZones.forEach(zone => {
+				const option = document.createElement('option');
+				option.value = zone.value; // ← ВОТ КЛЮЧЕВОЕ: value из API
+				option.textContent = zone.name; // ← А отображается name
+				select.appendChild(option);
+			});
+			
+			// Восстанавливаем выбор (если зона всё ещё существует)
+			if (currentValue && allZones.some(z => z.value === currentValue)) {
+				select.value = currentValue;
+			}
+		});
+	} catch (error) {
+		console.error('Ошибка загрузки зон:', error);
+	}
+}
+
+// === МОДАЛЬНОЕ ОКНО УПРАВЛЕНИЯ ЗОНАМИ ===
+const manageZonesBtn = document.getElementById('manageZonesBtn');
+const zonesDialog = document.getElementById('zonesDialog');
+const closeZonesDialog = document.getElementById('closeZonesDialog');
+const zonesList = document.getElementById('zonesList');
+const addZoneForm = document.getElementById('addZoneForm');
+const newZoneInput = document.getElementById('newZoneName');
+
+// Открытие диалога
+manageZonesBtn?.addEventListener('click', async () => {
+	if (!navigator.onLine) {
+		alert('🚫 Нет интернета');
+		return;
+	}
+	
+	await renderZonesList();
+	zonesDialog.showModal();
+});
+
+// Закрытие
+closeZonesDialog?.addEventListener('click', () => {
+	zonesDialog.close();
+	newZoneInput.value = '';
+});
+
+// Добавление новой зоны
+// Добавление новой зоны
+addZoneForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const zoneName = newZoneInput.value.trim();
+  
+  if (!zoneName) {
+    alert('❌ Введите название зоны');
+    return;
+  }
+
+  // --- ВОТ ИЗМЕНЕНИЕ ---
+  // Генерируем value: "102 микрорайон" -> "102-микрорайон"
+  // Мы также приводим к нижнему регистру для единообразия value
+  const zoneValue = zoneName.toLowerCase().replace(/\s+/g, '-');
+  // --- КОНЕЦ ИЗМЕНЕНИЯ ---
+
+  showLoading();
+  
+  try {
+    const success = await addZone(zoneName, zoneValue); // Отправляем оба значения
+    if (success) {
+      newZoneInput.value = ''; // Очищаем только одно поле
+      // document.getElementById('newZoneValue').value = ''; // Это поле больше не существует
+      await loadAndPopulateZones(); // Обновляем все select'ы
+      await renderZonesList(); // Обновляем список в модалке
+    }
+  } catch (error) {
+    console.error('Ошибка:', error);
+  } finally {
+    hideLoading();
+  }
+});
+
+/**
+ * Отрисовывает список зон в модальном окне
+ */
+async function renderZonesList() {
+	showLoading();
+	
+	try {
+		allZones = await getZones();
+		
+		if (allZones.length === 0) {
+			zonesList.innerHTML = '<p style="text-align:center; color:#999;">Нет зон</p>';
+			return;
+		}
+		
+		let html = '<ul class="zones-list">';
+		
+		allZones.forEach(zone => {
+			html += `
+				<li class="zone-item" data-id="${zone.id}">
+					<div class="zone-info">
+						<div class="zone-name">${zone.name}</div>
+						<div class="zone-value">value: "${zone.value}"</div>
+					</div>
+					<div class="zone-actions">
+						<button class="btn edit-btn edit-zone-btn" 
+							data-id="${zone.id}" 
+							data-name="${zone.name}"
+							data-value="${zone.value}">
+							✏️ Изменить
+						</button>
+						<button class="btn delete-btn delete-zone-btn" 
+							data-id="${zone.id}" 
+							data-name="${zone.name}">
+							🗑 Удалить
+						</button>
+					</div>
+				</li>
+			`;
+		});
+		
+		html += '</ul>';
+		zonesList.innerHTML = html;
+		
+		// Подключаем обработчики
+		attachZoneEventListeners();
+		
+	} catch (error) {
+		console.error('Ошибка рендеринга зон:', error);
+		zonesList.innerHTML = '<p style="color:red;">Ошибка загрузки зон</p>';
+	} finally {
+		hideLoading();
+	}
+}
+
+/**
+ * Подключает обработчики к кнопкам удаления/редактирования
+ */
+function attachZoneEventListeners() {
+    // Удаление
+    document.querySelectorAll('.delete-zone-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const zoneId = Number(btn.dataset.id);
+            const zoneName = btn.dataset.name;
+            
+            if (!confirm(`Удалить зону "${zoneName}"?\n\n⚠️ Это не изменит существующих клиентов.`)) {
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                const success = await deleteZone(zoneId, zoneName);
+                if (success) {
+                    await loadAndPopulateZones();
+                    await renderZonesList();
+                } else {
+                    // --- ДОБАВЛЕНО ---
+                    // Если success = false, но ошибки не было, скажем об этом
+                    alert('Не удалось удалить зону. Сервер не вернул ошибку, но удаление не было успешным.');
+                    // --- КОНЕЦ ДОБАВЛЕНИЯ ---
+                }
+
+            } catch (error) {
+                // --- ИЗМЕНЕНО ---
+                // Раньше было только console.error
+                console.error('Ошибка удаления:', error);
+                alert(`🚫 Не удалось удалить зону "${zoneName}"!\n\n${error.message || error}`);
+                // --- КОНЕЦ ИЗМЕНЕНИЯ ---
+
+            } finally {
+                hideLoading();
+            }
+        });
+    });
+    
+    // Редактирование
+    document.querySelectorAll('.edit-zone-btn').forEach(btn => {
+        // ... (ваш код редактирования, он в порядке)
+    });
+}
+
+// === АВТОЗАГРУЗКА ПРИ СТАРТЕ ===
+window.addEventListener('load', async () => {
+	if (navigator.onLine) {
+		await loadAndPopulateZones();
+	}
+});
+
+// === ПЕРЕЗАГРУЗКА ПРИ ВОССТАНОВЛЕНИИ ИНТЕРНЕТА ===
+window.addEventListener('online', async () => {
+	await loadAndPopulateZones();
+});
+
+// === (НОВЫЙ) ЛОГИКА ЗАКРЫТИЯ ДИАЛОГОВ ПО КЛИКУ НА ФОН ===
+
+// Находим все диалоговые окна на странице
+const allDialogs = document.querySelectorAll('dialog');
+
+allDialogs.forEach(dialog => {
+  dialog.addEventListener('click', (e) => {
+    
+    // Получаем "коробку" (прямоугольник) с размерами и положением диалога
+    const dialogRect = dialog.getBoundingClientRect();
+
+    // e.clientX и e.clientY — это координаты, где был клик
+    
+    // Проверяем, был ли клик ВНЕ этой "коробки"
+    const isClickOutside = (
+      e.clientY < dialogRect.top ||    // Выше окна
+      e.clientY > dialogRect.bottom || // Ниже окна
+      e.clientX < dialogRect.left ||   // Левее окна
+      e.clientX > dialogRect.right     // Правее окна
+    );
+
+    // Если клик был снаружи, закрываем
+    if (isClickOutside) {
+      dialog.close();
+    }
+  });
+});
+
+// === КОНЕЦ ЛОГИКИ ===
+

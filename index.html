@@ -36,6 +36,9 @@
 			<button class="btn info-btn" id="backupDataBtn">
 				🔄 Резервное копирование данных
 			</button>
+			<button class="btn info-btn" id="manageZonesBtn">
+	📍 Управление зонами
+</button>
 		</div>
 
 		<!-- Таблица клиентов -->
@@ -57,7 +60,7 @@
 			<button class="editClientDialogClose btn delete-btn">Закрыть</button>
 			<form class="editClientForm">
 				<input type="text" name="client" placeholder="Имя клиента" required />
-				<select name="place" required>
+				<!-- <select name="place" required>
 					<option value="">Выберите место</option>
 					<option value="Садбарг">Садбарг</option>
 					<option value="Жд-Вокзал">Жд Вокзал</option>
@@ -73,8 +76,13 @@
 					<option value="Мебелный">Мебелный</option>
 					<option value="Мирзо-Турсунзода">Мирзо Турсунзода</option>
                <option value="103-микрорайон">103 микрорайон</option>
+					<option value="102-микрорайон">102 микрорайон</option>
 
-				</select>
+				</select> -->
+				<select name="place" required>
+	<option value="">Выберите место</option>
+	<!-- Остальные option будут добавлены автоматически -->
+</select>
 				<!-- Поле телефона (теперь просто строка) -->
 				<input
 					type="tel"
@@ -144,7 +152,7 @@
 			<button class="addDialogClose btn delete-btn">Закрыть</button>
 			<form class="formAdd">
 				<input type="text" name="client" placeholder="Имя клиента" required />
-				<select name="place" required>
+				<!-- <select name="place" required>
 					<option value="">Выберите место</option>
 					<option value="Садбарг">Садбарг</option>
 					<option value="Жд-Вокзал">Жд Вокзал</option>
@@ -160,7 +168,12 @@
 					<option value="Мебелный">Мебелный</option>
                <option value="Мирзо-Турсунзода">Мирзо Турсунзода</option>
 					 <option value="103-микрорайон">103 микрорайон</option>
-				</select>
+					 <option value="102-микрорайон">102 микрорайон</option>
+				</select> -->
+				<select name="place" required>
+	<option value="">Выберите место</option>
+	<!-- Остальные option будут добавлены автоматически -->
+</select>
 				<!-- Поле телефона (без оператора!) -->
 				<input
 					type="tel"
@@ -261,6 +274,35 @@
 			/>
 			<div id="invoicesList"></div>
 		</dialog>
+<dialog id="zonesDialog" class="zones-dialog">
+	<button class="btn delete-btn" id="closeZonesDialog">Закрыть</button>
+	<h2>Управление зонами</h2>
+	
+	<!-- Форма добавления -->
+<form id="addZoneForm" style="margin-bottom: 20px;">
+  
+  <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+    <input 
+      type="text" 
+      id="newZoneName" 
+      placeholder="Название зоны (напр: 102 микрорайон)" 
+      required 
+      class="form-input"
+      style="flex-grow: 1;"
+    />
+    <button type="submit" class="btn info-btn">+ Добавить</button>
+  </div>
+
+  <small style="color: #666; display: block; margin-top: 8px;">
+    💡 Значение (value) будет создано автоматически (напр: "102-микрорайон").
+  </small>
+</form>
+	
+	<!-- Список зон -->
+	<div id="zonesList" style="max-height: 400px; overflow-y: auto;">
+		<!-- Здесь будут зоны -->
+	</div>
+</dialog>
 		<div id="loading-overlay" class="loading-overlay" style="display: none">
 			<div class="spinner"></div>
 			<p>Загрузка...</p>

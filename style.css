@@ -552,4 +552,77 @@ textarea[readonly] {
 		transform: translateY(0);
 	}
 }
+.zones-dialog {
+	border: none;
+	border-radius: 12px;
+	padding: 25px;
+	max-width: 500px;
+	width: 90%;
+	box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
 
+.zones-dialog h2 {
+	margin: 0 0 20px 0;
+	text-align: center;
+	color: #333;
+}
+
+.zones-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.zone-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 15px;
+	margin-bottom: 10px;
+	background: #f8f9fa;
+	border-radius: 8px;
+	transition: background 0.2s;
+}
+
+.zone-item:hover {
+	background: #e9ecef;
+}
+
+.zone-name {
+	font-weight: 600;
+	font-size: 16px;
+	color: #333;
+}
+
+.zone-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.zone-actions .btn {
+	padding: 6px 12px;
+	font-size: 13px;
+}
+
+.edit-zone-btn {
+	background: #ffc107;
+	color: #000;
+}
+
+.edit-zone-btn:hover {
+	background: #ffb300;
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+	.zone-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+	}
+	
+	.zone-actions {
+		width: 100%;
+		justify-content: flex-end;
+	}
+}
