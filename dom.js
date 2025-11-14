@@ -2389,6 +2389,8 @@ addZoneForm?.addEventListener('submit', async (e) => {
   }
 });
 
+
+
 /**
  * Отрисовывает список зон в модальном окне
  */
@@ -2485,9 +2487,50 @@ function attachZoneEventListeners() {
     });
     
     // Редактирование
-    document.querySelectorAll('.edit-zone-btn').forEach(btn => {
-        // ... (ваш код редактирования, он в порядке)
+ // Редактирование
+document.querySelectorAll('.edit-zone-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const zoneId = Number(btn.dataset.id);
+        const oldName = btn.dataset.name;
+        const oldValue = btn.dataset.value;
+
+        // 1. Запрашиваем новое имя у пользователя
+        const newName = prompt(`✏️ Введите новое название для зоны "${oldName}":`, oldName);
+
+        if (!newName || newName.trim() === oldName) {
+            // Пользователь нажал Отмена или не изменил имя
+            return;
+        }
+        
+        const trimmedNewName = newName.trim();
+
+        // 2. Генерируем новое значение (value) по той же логике, что и при добавлении
+        // "Новое Имя" -> "новое-имя"
+        const newZoneValue = trimmedNewName.toLowerCase().replace(/\s+/g, '-');
+
+        showLoading();
+
+        try {
+            // 3. Вызываем функцию обновления на сервере
+            const success = await updateZone(zoneId, trimmedNewName, newZoneValue); 
+
+            if (success) {
+                alert(`✅ Зона "${oldName}" успешно изменена на "${trimmedNewName}"!`);
+                
+                // 4. Обновляем все селекты и список зон
+                await loadAndPopulateZones(); 
+                await renderZonesList(); 
+            } else {
+                alert('Не удалось обновить зону. Пожалуйста, попробуйте еще раз.');
+            }
+        } catch (error) {
+            console.error('Ошибка редактирования зоны:', error);
+            alert(`🚫 Ошибка при редактировании зоны "${oldName}"!\n\n${error.message || error}`);
+        } finally {
+            hideLoading();
+        }
     });
+});
 }
 
 // === АВТОЗАГРУЗКА ПРИ СТАРТЕ ===
