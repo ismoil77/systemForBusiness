@@ -200,16 +200,114 @@ function resetDebtPaymentFields() {
 
 // === ПОИСК ===
 // СТАЛО: локальный синхронный поиск
+// === УМНЫЙ ПОИСК С ТРАНСЛИТЕРАЦИЕЙ ===
+
+// Таблицы соответствий
+const translitMap = {
+	// Кириллица → Латиница
+	'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+	'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+	'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+	'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
+	'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+	// Таджикские буквы
+	'ғ': 'gh', 'қ': 'q', 'ӣ': 'i', 'ӯ': 'u', 'ҳ': 'h', 'ҷ': 'j'
+}
+
+// Обратная таблица (Латиница → Кириллица)
+const reverseTranslitMap = {}
+Object.keys(translitMap).forEach(key => {
+	const value = translitMap[key]
+	if (value && !reverseTranslitMap[value]) {
+		reverseTranslitMap[value] = key
+	}
+})
+
+// Таджикские варианты букв
+const tajikVariants = {
+	'к': ['к', 'қ'],
+	'қ': ['к', 'қ'],
+	'г': ['г', 'ғ'],
+	'ғ': ['г', 'ғ'],
+	'и': ['и', 'ӣ'],
+	'ӣ': ['и', 'ӣ'],
+	'у': ['у', 'ӯ'],
+	'ӯ': ['у', 'ӯ'],
+	'х': ['х', 'ҳ'],
+	'ҳ': ['х', 'ҳ'],
+	'ч': ['ч', 'ҷ'],
+	'ҷ': ['ч', 'ҷ']
+}
+
+// Функция "умного" поиска
+function smartSearch(searchTerm, targetText) {
+	if (!searchTerm || !targetText) return false
+	
+	searchTerm = searchTerm.toLowerCase().trim()
+	targetText = targetText.toLowerCase()
+	
+	// 1. Прямое совпадение
+	if (targetText.includes(searchTerm)) return true
+	
+	// 2. Транслитерация кириллица → латиница
+	let translitSearch = ''
+	for (let char of searchTerm) {
+		translitSearch += translitMap[char] || char
+	}
+	if (targetText.includes(translitSearch)) return true
+	
+	// 3. Транслитерация латиница → кириллица
+	let reverseTranslit = ''
+	let i = 0
+	while (i < searchTerm.length) {
+		let found = false
+		// Проверяем двухбуквенные комбинации
+		for (let len = 3; len >= 1; len--) {
+			const substr = searchTerm.substr(i, len)
+			if (reverseTranslitMap[substr]) {
+				reverseTranslit += reverseTranslitMap[substr]
+				i += len
+				found = true
+				break
+			}
+		}
+		if (!found) {
+			reverseTranslit += searchTerm[i]
+			i++
+		}
+	}
+	if (targetText.includes(reverseTranslit)) return true
+	
+	// 4. Учёт таджикских вариантов
+	let regexPattern = searchTerm.split('').map(char => {
+		if (tajikVariants[char]) {
+			return `[${tajikVariants[char].join('')}]`
+		}
+		return char
+	}).join('')
+	
+	try {
+		const regex = new RegExp(regexPattern, 'i')
+		if (regex.test(targetText)) return true
+	} catch (e) {
+		// Если регулярка невалидна, игнорируем
+	}
+	
+	return false
+}
+
+// === ПОИСК ===
+// Обновляем поиск клиентов
 searchClient.addEventListener('input', () => {
-	const searchTerm = searchClient.value.trim().toLowerCase()
+	const searchTerm = searchClient.value.trim()
 
 	if (searchTerm === '') {
-		// Возвращаем ПОЛНЫЙ список
 		renderClientTable(fullClientList)
 	} else {
-		// Фильтруем ПОЛНЫЙ список
 		const filtered = fullClientList.filter(client =>
-			client.client.toLowerCase().includes(searchTerm)
+			smartSearch(searchTerm, client.client) ||
+			smartSearch(searchTerm, client.place) ||
+			smartSearch(searchTerm, client.phoneNumber?.[0] || '')
 		)
 		renderClientTable(filtered)
 	}
@@ -1361,28 +1459,31 @@ document.querySelectorAll('.print-invoice-double-btn').forEach(btn => {
 }
 
 // === ПОИСК ПО НАКЛАДНЫМ ===
+// === ПОИСК ПО НАКЛАДНЫМ С УМНЫМ ПОИСКОМ ===
 document.getElementById('invoiceSearch')?.addEventListener('input', e => {
-	const searchTerm = e.target.value.trim().toLowerCase()
+	const searchTerm = e.target.value.trim()
 
 	if (searchTerm === '') {
-		// Нужно хранить оригинальные данные!
-		// Добавь глобальную переменную:
-		// let originalClientRecords = [];
-
 		renderInvoicesList(originalClientRecords)
 		return
 	}
 
 	const filtered = originalClientRecords
 		.map(record => {
-			const filteredInvoices = (record.invoices || []).filter(
-				inv =>
-					(inv.invoiceNumber || '').toLowerCase().includes(searchTerm) ||
-					(record.clientName || '').toLowerCase().includes(searchTerm) ||
-					(inv.items || []).some(item =>
-						(item.name || '').toLowerCase().includes(searchTerm)
-					)
-			)
+			const filteredInvoices = (record.invoices || []).filter(inv => {
+				// Проверяем номер накладной
+				if (smartSearch(searchTerm, inv.invoiceNumber || '')) return true
+				
+				// Проверяем имя клиента
+				if (smartSearch(searchTerm, record.clientName || '')) return true
+				
+				// Проверяем товары
+				const itemsMatch = (inv.items || []).some(item =>
+					smartSearch(searchTerm, item.name || '')
+				)
+				
+				return itemsMatch
+			})
 			return { ...record, invoices: filteredInvoices }
 		})
 		.filter(record => (record.invoices || []).length > 0)
@@ -1560,17 +1661,32 @@ function printInvoice(invoice, clientName, place, phoneNumber) {
 			</div>
 
 			<script>
-				// Автоматическая печать через 1 секунду
-				setTimeout(() => window.print(), 500);
+				// Автоматическая печать через 1 секунду, затем закрытие окна
+				window.onload = function() {
+					setTimeout(function() {
+						window.print();
+						// Закрываем окно после печати
+						setTimeout(function() {
+							window.close();
+						}, 500);
+					}, 500);
+				};
 			</script>
 		</body>
 		</html>
 	`
 
-	const win = window.open('', '_blank')
-	win.document.write(printContent)
-	win.document.close()
-	win.focus()
+	// Открываем в НОВОМ окне с уникальным именем
+	const uniqueName = `invoice_${invoice.id}_${Date.now()}`
+	const win = window.open('', uniqueName, 'width=800,height=600')
+	if (win) {
+		win.document.write(printContent)
+		win.document.close()
+		win.focus()
+	} else {
+		alert('Пожалуйста, разрешите всплывающие окна для печати')
+	}
+
 }
 // Пересчитывает и обновляет общий долг в шапке
 function updateTotalDebt() {
@@ -1848,16 +1964,32 @@ function printClientHistory(client) {
 			${renderHistoryTable(client.viruchka || [], ['Дата', 'Сумма', 'Способ оплаты'])}
 
 			<script>
-				setTimeout(() => window.print(), 500);
+				// Автоматическая печать через 1 секунду, затем закрытие окна
+				window.onload = function() {
+					setTimeout(function() {
+						window.print();
+						// Закрываем окно после печати
+						setTimeout(function() {
+							window.close();
+						}, 500);
+					}, 500);
+				};
 			</script>
 		</body>
 		</html>
 	`
 
-	const win = window.open('', '_blank')
-	win.document.write(printContent)
-	win.document.close()
-	win.focus()
+	// Открываем в НОВОМ окне с уникальным именем
+	const uniqueName = `invoice_${invoice.id}_${Date.now()}`
+	const win = window.open('', uniqueName, 'width=800,height=600')
+	if (win) {
+		win.document.write(printContent)
+		win.document.close()
+		win.focus()
+	} else {
+		alert('Пожалуйста, разрешите всплывающие окна для печати')
+	}
+
 }
 
 // Вспомогательная функция для генерации таблицы
@@ -2273,17 +2405,32 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 			</div>
 
 			<script>
-				// Автоматическая печать через 1 секунду
-				setTimeout(() => window.print(), 500);
+				// Автоматическая печать через 1 секунду, затем закрытие окна
+				window.onload = function() {
+					setTimeout(function() {
+						window.print();
+						// Закрываем окно после печати
+						setTimeout(function() {
+							window.close();
+						}, 500);
+					}, 500);
+				};
 			</script>
 		</body>
 		</html>
 	`
 
-	const win = window.open('', '_blank')
-	win.document.write(printContent)
-	win.document.close()
-	win.focus()
+	// Открываем в НОВОМ окне с уникальным именем
+	const uniqueName = `invoice_${invoice.id}_${Date.now()}`
+	const win = window.open('', uniqueName, 'width=800,height=600')
+	if (win) {
+		win.document.write(printContent)
+		win.document.close()
+		win.focus()
+	} else {
+		alert('Пожалуйста, разрешите всплывающие окна для печати')
+	}
+
 }
 
 
@@ -2574,4 +2721,862 @@ allDialogs.forEach(dialog => {
 });
 
 // === КОНЕЦ ЛОГИКИ ===
+// === СЕГОДНЯШНИЕ НАКЛАДНЫЕ В LOCALSTORAGE ===
 
+// Сохранение накладной в сегодняшние
+function saveTodayInvoice(invoice) {
+	const today = new Date().toISOString().split('T')[0]
+	let todayInvoices = JSON.parse(localStorage.getItem('todayInvoices') || '{}')
+	
+	if (!todayInvoices[today]) {
+		todayInvoices[today] = []
+	}
+	
+	todayInvoices[today].push(invoice)
+	localStorage.setItem('todayInvoices', JSON.stringify(todayInvoices))
+}
+
+// Получение сегодняшних накладных
+function getTodayInvoices() {
+	const today = new Date().toISOString().split('T')[0]
+	const todayInvoices = JSON.parse(localStorage.getItem('todayInvoices') || '{}')
+	return todayInvoices[today] || []
+}
+
+// Обновление накладной
+function updateTodayInvoice(invoiceId, updatedInvoice) {
+	const today = new Date().toISOString().split('T')[0]
+	let todayInvoices = JSON.parse(localStorage.getItem('todayInvoices') || '{}')
+	
+	if (todayInvoices[today]) {
+		const index = todayInvoices[today].findIndex(inv => inv.id === invoiceId)
+		if (index !== -1) {
+			todayInvoices[today][index] = updatedInvoice
+			localStorage.setItem('todayInvoices', JSON.stringify(todayInvoices))
+			return true
+		}
+	}
+	return false
+}
+
+// Удаление накладной
+function deleteTodayInvoice(invoiceId) {
+	const today = new Date().toISOString().split('T')[0]
+	let todayInvoices = JSON.parse(localStorage.getItem('todayInvoices') || '{}')
+	
+	if (todayInvoices[today]) {
+		todayInvoices[today] = todayInvoices[today].filter(inv => inv.id !== invoiceId)
+		localStorage.setItem('todayInvoices', JSON.stringify(todayInvoices))
+	}
+}
+
+// === МОДАЛКА СЕГОДНЯШНИХ НАКЛАДНЫХ ===
+const todayInvoicesBtn = document.getElementById('todayInvoicesBtn')
+const todayInvoicesDialog = document.getElementById('todayInvoicesDialog')
+const closeTodayInvoices = document.getElementById('closeTodayInvoices')
+const todayInvoicesList = document.getElementById('todayInvoicesList')
+const printAllTodayBtn = document.getElementById('printAllTodayBtn')
+
+todayInvoicesBtn?.addEventListener('click', () => {
+	renderTodayInvoices()
+	todayInvoicesDialog.showModal()
+})
+
+closeTodayInvoices?.addEventListener('click', () => {
+	todayInvoicesDialog.close()
+})
+
+// Отрисовка сегодняшних накладных
+function renderTodayInvoices() {
+	const invoices = getTodayInvoices()
+	
+	if (invoices.length === 0) {
+		todayInvoicesList.innerHTML = '<p style="text-align:center;color:#999;">Нет сегодняшних накладных</p>'
+		return
+	}
+	
+	let html = '<div class="today-invoices-list">'
+	
+	invoices.forEach(invoice => {
+		const total = (invoice.totalAmount || 0).toFixed(2)
+		const items = (invoice.items || []).map(i => `${i.name} (${i.quantity}шт×${i.price})`).join(', ')
+		
+		html += `
+			<div class="today-invoice-card" data-id="${invoice.id}">
+				<div class="invoice-header">
+					<strong>${invoice.invoiceNumber}</strong>
+					<span>${invoice.clientName} (${invoice.clientPlace})</span>
+				</div>
+				<div class="invoice-details">
+					<small>${items}</small>
+					<strong>${total} сомони</strong>
+				</div>
+				<div class="invoice-actions">
+					<button class="btn info-btn edit-today-invoice" data-id="${invoice.id}">✏️ Редактировать</button>
+					<button class="btn info-btn print-today-invoice" data-id="${invoice.id}">🖨 Печать</button>
+					<button class="btn info-btn print-today-double" data-id="${invoice.id}">🖨🖨 Двойная</button>
+					<button class="btn delete-btn delete-today-invoice" data-id="${invoice.id}">🗑 Удалить</button>
+				</div>
+			</div>
+		`
+	})
+	
+	html += '</div>'
+	todayInvoicesList.innerHTML = html
+	
+	attachTodayInvoiceListeners()
+}
+
+// Обработчики для сегодняшних накладных
+function attachTodayInvoiceListeners() {
+	// Редактирование
+	document.querySelectorAll('.edit-today-invoice').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const invoiceId = btn.dataset.id
+			const invoice = getTodayInvoices().find(inv => inv.id === invoiceId)
+			if (invoice) openEditTodayInvoice(invoice)
+		})
+	})
+	
+	// Печать
+	document.querySelectorAll('.print-today-invoice').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const invoiceId = btn.dataset.id
+			const invoice = getTodayInvoices().find(inv => inv.id === invoiceId)
+			if (invoice) {
+				printInvoice(invoice, invoice.clientName, invoice.clientPlace, invoice.clientPhone)
+			}
+		})
+	})
+	
+	// Двойная печать
+	document.querySelectorAll('.print-today-double').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const invoiceId = btn.dataset.id
+			const invoice = getTodayInvoices().find(inv => inv.id === invoiceId)
+			if (invoice) {
+				printInvoiceDouble(invoice, invoice.clientName, invoice.clientPlace, invoice.clientPhone)
+			}
+		})
+	})
+	
+	// Удаление
+	document.querySelectorAll('.delete-today-invoice').forEach(btn => {
+		btn.addEventListener('click', () => {
+			if (!confirm('Удалить эту накладную из сегодняшних?')) return
+			deleteTodayInvoice(btn.dataset.id)
+			renderTodayInvoices()
+		})
+	})
+}
+
+// Печать всех сегодняшних
+// Печать всех сегодняшних
+// Печать всех сегодняшних (одинарная)
+// Печать всех сегодняшних (одинарная) - ОДНО окно, много страниц
+printAllTodayBtn?.addEventListener('click', () => {
+	const invoices = getTodayInvoices()
+	if (invoices.length === 0) {
+		alert('Нет накладных для печати')
+		return
+	}
+	
+	printAllInvoicesSingle(invoices)
+})
+
+// Двойная печать всех сегодняшних - ОДНО окно, много страниц
+const printAllTodayDoubleBtn = document.getElementById('printAllTodayDoubleBtn')
+printAllTodayDoubleBtn?.addEventListener('click', () => {
+	const invoices = getTodayInvoices()
+	if (invoices.length === 0) {
+		alert('Нет накладных для печати')
+		return
+	}
+	
+	printAllInvoicesDouble(invoices)
+})
+
+// === ФУНКЦИЯ: Печать всех накладных (одинарная, каждая на своей странице) ===
+function printAllInvoicesSingle(invoices) {
+	let allPagesHtml = ''
+	
+	invoices.forEach((invoice, index) => {
+		const formattedDate = invoice.createdAt
+			? new Date(invoice.createdAt).toISOString().split('T')[0]
+			: new Date().toISOString().split('T')[0]
+		
+		const itemsHtml = invoice.items
+			.map(item => `
+				<tr>
+					<td>${item.name}</td>
+					<td>${item.quantity}</td>
+					<td>${item.price.toFixed(2)}</td>
+					<td class="sum">${item.total.toFixed(2)}</td>
+				</tr>
+			`).join('')
+		
+		// Добавляем разрыв страницы после каждой накладной (кроме последней)
+		const pageBreak = index < invoices.length - 1 ? 'page-break-after: always;' : ''
+		
+		allPagesHtml += `
+			<div class="invoice-page" style="${pageBreak}">
+				<h1>Накладная</h1>
+				
+				<div class="header">
+					<div>
+						<label>Номер накладной:</label>
+						<input type="text" value="${invoice.invoiceNumber}" readonly>
+					</div>
+					<div>
+						<label>Дата:</label>
+						<input type="date" value="${formattedDate}" readonly>
+					</div>
+				</div>
+				
+				<div class="details">
+					<div>
+						<label>Компания:</label>
+						<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+					</div>
+					<div>
+						<label>Клиент: ${invoice.clientPhone}</label>
+						<input type="text" value="${invoice.clientName} ${invoice.clientPlace}" readonly>
+					</div>
+				</div>
+				
+				<table>
+					<thead>
+						<tr>
+							<th>Наименование товара</th>
+							<th>Кол-во</th>
+							<th>Цена</th>
+							<th>Сумма</th>
+						</tr>
+					</thead>
+					<tbody>
+						${itemsHtml}
+					</tbody>
+				</table>
+				
+				<div class="total">
+					Общая сумма: <span>${invoice.totalAmount.toFixed(2)}</span> сомони.
+				</div>
+				
+				<div class="signature">
+					<div>
+						Подпись клиента: <span></span>
+					</div>
+					<div>
+						<img src="./ПОДПИСЬ_ИСМИОЛ-removebg-preview.png" alt="Logo" style="height: 60px;width:60px; margin-bottom: 5px;"/>
+						Подпись: <span></span>
+					</div>
+				</div>
+			</div>
+		`
+	})
+	
+	const printContent = `
+		<!DOCTYPE html>
+		<html lang="ru">
+		<head>
+			<meta charset="UTF-8">
+			<title>Печать ${invoices.length} накладных</title>
+			<style>
+				@page {
+					size: A4;
+					margin: 15mm;
+				}
+				
+				* { box-sizing: border-box; }
+				
+				body {
+					font-family: 'Arial', sans-serif;
+					margin: 0;
+					padding: 0;
+					color: #333;
+				}
+				
+				.invoice-page {
+					width: 100%;
+					padding: 20px;
+				}
+				
+				h1 {
+					text-align: center;
+					margin-bottom: 10px;
+					font-size: 24px;
+				}
+				
+				.header, .details {
+					display: flex;
+					justify-content: space-between;
+					margin-bottom: 15px;
+					flex-wrap: wrap;
+				}
+				
+				.header div, .details div {
+					flex: 1 1 45%;
+					margin-bottom: 10px;
+				}
+				
+				label {
+					font-weight: bold;
+				}
+				
+				input[type="text"], input[type="date"] {
+					width: 100%;
+					height: 30px;
+					padding: 5px;
+					margin-top: 4px;
+					border: 1px solid #ccc;
+					border-radius: 4px;
+					font-weight: 600;
+					font-size: medium;
+				}
+				
+				table {
+					width: 100%;
+					border-collapse: collapse;
+					margin-top: 20px;
+				}
+				
+				th, td {
+					border: 1px solid #888;
+					padding: 8px;
+					text-align: left;
+				}
+				
+				th {
+					background-color: #f0f0f0;
+				}
+				
+				.sum {
+					text-align: right;
+				}
+				
+				.total {
+					text-align: right;
+					font-weight: bold;
+					margin-top: 10px;
+					font-size: 16px;
+				}
+				
+				.signature {
+					margin-top: 30px;
+					display: flex;
+					justify-content: space-between;
+				}
+				
+				.signature div {
+					text-align: center;
+				}
+				
+				.signature span {
+					display: block;
+					border-top: 1px solid #000;
+					width: 200px;
+					margin: 5px auto 0;
+					padding-top: 5px;
+				}
+				
+				@media print {
+					input { border: none !important; }
+					body { margin: 0; }
+				}
+			</style>
+		</head>
+		<body>
+			${allPagesHtml}
+			<script>
+				window.onload = function() {
+					setTimeout(function() {
+						window.print();
+						setTimeout(function() {
+							window.close();
+						}, 500);
+					}, 500);
+				};
+			</script>
+		</body>
+		</html>
+	`
+	
+	const win = window.open('', `print_all_${Date.now()}`, 'width=800,height=600')
+	if (win) {
+		win.document.write(printContent)
+		win.document.close()
+		win.focus()
+	} else {
+		alert('Пожалуйста, разрешите всплывающие окна для печати')
+	}
+}
+
+// === ФУНКЦИЯ: Печать всех накладных (двойная, 2 на листе) ===
+function printAllInvoicesDouble(invoices) {
+	let allPagesHtml = ''
+	
+	invoices.forEach((invoice, index) => {
+		const formattedDate = invoice.createdAt
+			? new Date(invoice.createdAt).toISOString().split('T')[0]
+			: new Date().toISOString().split('T')[0]
+		
+		const itemsHtml = invoice.items
+			.map(item => `
+				<tr>
+					<td>${item.name}</td>
+					<td>${item.quantity}</td>
+					<td>${item.price.toFixed(2)}</td>
+					<td class="sum">${item.total.toFixed(2)}</td>
+				</tr>
+			`).join('')
+		
+		// Разрыв страницы после каждой накладной (кроме последней)
+		const pageBreak = index < invoices.length - 1 ? 'page-break-after: always;' : ''
+		
+		allPagesHtml += `
+			<div class="page-wrapper" style="${pageBreak}">
+				<!-- ВЕРХНЯЯ НАКЛАДНАЯ -->
+				<div class="invoice-half top">
+					<h1>Накладная</h1>
+					<div class="header">
+						<div>
+							<label>Номер:</label>
+							<input type="text" value="${invoice.invoiceNumber}" readonly>
+						</div>
+						<div>
+							<label>Дата:</label>
+							<input type="date" value="${formattedDate}" readonly>
+						</div>
+					</div>
+					<div class="details">
+						<div>
+							<label>Компания:</label>
+							<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+						</div>
+						<div>
+							<label>Клиент: ${invoice.clientPhone}</label>
+							<input type="text" value="${invoice.clientName} ${invoice.clientPlace}" readonly>
+						</div>
+					</div>
+					<table>
+						<thead>
+							<tr>
+								<th>Товар</th>
+								<th>Кол-во</th>
+								<th>Цена</th>
+								<th>Сумма</th>
+							</tr>
+						</thead>
+						<tbody>${itemsHtml}</tbody>
+					</table>
+					<div class="total">Сумма: ${invoice.totalAmount.toFixed(2)} сомони.</div>
+					<div class="signature">
+						<div>Подпись клиента: <span></span></div>
+						<div>
+							<img src="./ПОДПИСЬ_ИСМИОЛ-removebg-preview.png" alt="Logo" style="height: 50px;width:50px;"/>
+							Подпись: <span></span>
+						</div>
+					</div>
+				</div>
+				
+				<!-- НИЖНЯЯ НАКЛАДНАЯ (ПЕРЕВЁРНУТАЯ) -->
+				<div class="invoice-half bottom">
+					<h1>Накладная</h1>
+					<div class="header">
+						<div>
+							<label>Номер:</label>
+							<input type="text" value="${invoice.invoiceNumber}" readonly>
+						</div>
+						<div>
+							<label>Дата:</label>
+							<input type="date" value="${formattedDate}" readonly>
+						</div>
+					</div>
+					<div class="details">
+						<div>
+							<label>Компания:</label>
+							<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+						</div>
+						<div>
+							<label>Клиент: ${invoice.clientPhone}</label>
+							<input type="text" value="${invoice.clientName} ${invoice.clientPlace}" readonly>
+						</div>
+					</div>
+					<table>
+						<thead>
+							<tr>
+								<th>Товар</th>
+								<th>Кол-во</th>
+								<th>Цена</th>
+								<th>Сумма</th>
+							</tr>
+						</thead>
+						<tbody>${itemsHtml}</tbody>
+					</table>
+					<div class="total">Сумма: ${invoice.totalAmount.toFixed(2)} сомони.</div>
+					<div class="signature">
+						<div>Подпись клиента: <span></span></div>
+						<div>
+							<img src="./ПОДПИСЬ_ИСМИОЛ-removebg-preview.png" alt="Logo" style="height: 50px;width:50px;"/>
+							Подпись: <span></span>
+						</div>
+					</div>
+				</div>
+			</div>
+		`
+	})
+	
+	const printContent = `
+		<!DOCTYPE html>
+		<html lang="ru">
+		<head>
+			<meta charset="UTF-8">
+			<title>Двойная печать ${invoices.length} накладных</title>
+			<style>
+				@page {
+					size: A4;
+					margin: 0;
+				}
+				
+				* { box-sizing: border-box; margin: 0; padding: 0; }
+				
+				body {
+					font-family: 'Arial', sans-serif;
+					margin: 0;
+					padding: 0;
+				}
+				
+				.page-wrapper {
+					width: 210mm;
+					height: 297mm;
+					position: relative;
+				}
+				
+				.invoice-half {
+					position: absolute;
+					width: 210mm;
+					height: 148.5mm;
+					padding: 10mm;
+					left: 0;
+				}
+				
+				.invoice-half.top {
+					top: 0;
+					border-bottom: 1px dashed #999;
+				}
+				
+				.invoice-half.bottom {
+					bottom: 0;
+					transform: rotate(180deg);
+					transform-origin: center center;
+				}
+				
+				h1 {
+					text-align: center;
+					margin-bottom: 8px;
+					font-size: 20px;
+				}
+				
+				.header, .details {
+					display: flex;
+					justify-content: space-between;
+					flex-wrap: wrap;
+					margin-bottom: 8px;
+				}
+				
+				.header div, .details div {
+					flex: 1 1 45%;
+				}
+				
+				label {
+					font-weight: bold;
+					font-size: 12px;
+				}
+				
+				input[type="text"], input[type="date"] {
+					width: 100%;
+					height: 25px;
+					padding: 3px;
+					margin-top: 2px;
+					border: 1px solid #ccc;
+					border-radius: 4px;
+					font-size: 12px;
+				}
+				
+				table {
+					width: 100%;
+					border-collapse: collapse;
+					margin-top: 8px;
+					font-size: 12px;
+				}
+				
+				th, td {
+					border: 1px solid #888;
+					padding: 5px;
+					text-align: left;
+				}
+				
+				th {
+					background-color: #f0f0f0;
+				}
+				
+				.sum {
+					text-align: right;
+				}
+				
+				.total {
+					text-align: right;
+					font-weight: bold;
+					margin-top: 8px;
+					font-size: 14px;
+				}
+				
+				.signature {
+					margin-top: 15px;
+					display: flex;
+					justify-content: space-between;
+					font-size: 11px;
+				}
+				
+				.signature div {
+					text-align: center;
+				}
+				
+				.signature span {
+					display: block;
+					border-top: 1px solid #000;
+					width: 150px;
+					margin: 3px auto 0;
+					padding-top: 3px;
+				}
+				
+				@media print {
+					input { border: none !important; }
+					body {
+						-webkit-print-color-adjust: exact;
+						print-color-adjust: exact;
+					}
+					.page-wrapper {
+						page-break-inside: avoid !important;
+					}
+				}
+			</style>
+		</head>
+		<body>
+			${allPagesHtml}
+			<script>
+				window.onload = function() {
+					setTimeout(function() {
+						window.print();
+						setTimeout(function() {
+							window.close();
+						}, 500);
+					}, 500);
+				};
+			</script>
+		</body>
+		</html>
+	`
+	
+	const win = window.open('', `print_all_double_${Date.now()}`, 'width=800,height=600')
+	if (win) {
+		win.document.write(printContent)
+		win.document.close()
+		win.focus()
+	} else {
+		alert('Пожалуйста, разрешите всплывающие окна для печати')
+	}
+}
+
+// Открытие редактирования
+function openEditTodayInvoice(invoice) {
+	const editDialog = document.getElementById('editTodayInvoiceDialog')
+	const itemsContainer = document.getElementById('editTodayItems')
+	const saveEditBtn = document.getElementById('saveEditTodayInvoice')
+	
+	// Заполняем товары
+	itemsContainer.innerHTML = ''
+	invoice.items.forEach((item, idx) => {
+		const itemDiv = document.createElement('div')
+		itemDiv.className = 'invoice-item'
+		itemDiv.innerHTML = `
+			<input type="text" class="item-name" value="${item.name}" data-idx="${idx}" required>
+			<input type="number" class="item-qty" value="${item.quantity}" data-idx="${idx}" min="1" required>
+			<input type="number" class="item-price" value="${item.price}" data-idx="${idx}" min="0" step="0.01" required>
+			<button type="button" class="btn delete-btn" onclick="this.parentElement.remove()">Удалить</button>
+		`
+		itemsContainer.appendChild(itemDiv)
+	})
+	
+	// Сохранение
+	saveEditBtn.onclick = () => {
+		const updatedItems = []
+		itemsContainer.querySelectorAll('.invoice-item').forEach(itemEl => {
+			const name = itemEl.querySelector('.item-name').value.trim()
+			const qty = parseFloat(itemEl.querySelector('.item-qty').value)
+			const price = parseFloat(itemEl.querySelector('.item-price').value)
+			
+			if (name && qty > 0 && price >= 0) {
+				updatedItems.push({
+					name,
+					quantity: qty,
+					price,
+					total: qty * price
+				})
+			}
+		})
+		
+		if (updatedItems.length === 0) {
+			alert('Должен быть хотя бы один товар')
+			return
+		}
+		
+		const updatedInvoice = {
+			...invoice,
+			items: updatedItems,
+			totalAmount: updatedItems.reduce((sum, item) => sum + item.total, 0)
+		}
+		
+		updateTodayInvoice(invoice.id, updatedInvoice)
+		editDialog.close()
+		renderTodayInvoices()
+		alert('✅ Накладная обновлена!')
+	}
+	
+	editDialog.showModal()
+}
+
+// Вспомогательная функция для добавления товара при редактировании
+function createEditItemElement() {
+	const itemDiv = document.createElement('div')
+	itemDiv.className = 'invoice-item'
+	itemDiv.innerHTML = `
+		<input type="text" class="item-name" placeholder="Товар" required>
+		<input type="number" class="item-qty" placeholder="Кол-во" min="1" value="1" required>
+		<input type="number" class="item-price" placeholder="Цена" min="0" step="0.01" required>
+		<button type="button" class="btn delete-btn" onclick="this.parentElement.remove()">Удалить</button>
+	`
+	return itemDiv
+}
+// === ОБЩАЯ ФУНКЦИЯ СОХРАНЕНИЯ НАКЛАДНОЙ ===
+// === ОБЩАЯ ФУНКЦИЯ СОХРАНЕНИЯ НАКЛАДНОЙ ===
+// === ОБЩАЯ ФУНКЦИЯ СОХРАНЕНИЯ НАКЛАДНОЙ ===
+async function saveInvoiceData(printMode = null) {
+	const clientId = Number(invoiceClientSelect.value)
+	if (isNaN(clientId)) {
+		alert('Выберите клиента')
+		return null
+	}
+	const invoiceDateInput = document.getElementById('invoiceDate')
+	const invoiceDate = invoiceDateInput?.value
+
+	if (!clientId) {
+		alert('Выберите клиента')
+		return null
+	}
+	if (!invoiceDate) {
+		alert('Укажите дату накладной')
+		return null
+	}
+
+	const items = getInvoiceItems()
+	if (items.length === 0) {
+		alert('Добавьте хотя бы один товар')
+		return null
+	}
+
+	const client = invoiceClients.find(c => c.id === clientId)
+	if (!client) return null
+
+	showLoading()
+	try {
+		// Генерация номера и ID накладной
+		const now = Date.now()
+		const datePart = invoiceDate.replace(/-/g, '')
+		const randomPart = String(Math.floor(Math.random() * 1000)).padStart(3, '0')
+		const invoiceNumber = `INV-${datePart}-${randomPart}`
+
+		const newInvoice = {
+			id: `inv_${now}`,
+			invoiceNumber,
+			items,
+			totalAmount: items.reduce((sum, item) => sum + item.total, 0),
+			createdAt: new Date(invoiceDate).toISOString(),
+		}
+
+		// 1. Сохранение на сервер
+		const response = await fetch(
+			`https://7cf074eeac80e141.mokky.dev/invoice?clientId=${clientId}`
+		)
+		const clientInvoices = await response.json()
+
+		if (clientInvoices.length > 0) {
+			const existing = clientInvoices[0]
+			existing.invoices.push(newInvoice)
+			existing.clientName = client.client
+
+			await fetch(`https://7cf074eeac80e141.mokky.dev/invoice/${existing.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(existing),
+			})
+		} else {
+			const newRecord = {
+				id: clientId,
+				clientId: client.id,
+				clientName: client.client + ' ' + client.place,
+				invoices: [newInvoice],
+			}
+			await fetch('https://7cf074eeac80e141.mokky.dev/invoice', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(newRecord),
+			})
+		}
+
+		// 2. Сохранение в localStorage (сегодняшние)
+		const today = new Date().toISOString().split('T')[0]
+		if (invoiceDate === today) {
+			saveTodayInvoice({
+				...newInvoice,
+				clientName: client.client,
+				clientPlace: client.place,
+				clientPhone: client.phoneNumber?.[0] || '',
+			})
+		}
+
+		// 3. Печать (если указан режим)
+		if (printMode === 'single') {
+			printInvoice(newInvoice, client.client, client.place, client.phoneNumber?.[0] || '')
+		} else if (printMode === 'double') {
+			printInvoiceDouble(newInvoice, client.client, client.place, client.phoneNumber?.[0] || '')
+		}
+
+		alert(`✅ Накладная ${invoiceNumber} сохранена!`)
+		invoiceDialog.close()
+		resetInvoiceItems()
+		return newInvoice
+	} catch (err) {
+		console.error('Ошибка сохранения:', err)
+		alert('Не удалось сохранить накладную')
+		return null
+	} finally {
+		hideLoading()
+	}
+}
+
+// Обработчики кнопок
+saveInvoiceBtn?.addEventListener('click', () => saveInvoiceData())
+
+document.getElementById('printSaveInvoiceBtn')?.addEventListener('click', () => {
+	saveInvoiceData('single')
+})
+
+document.getElementById('printDoubleSaveInvoiceBtn')?.addEventListener('click', () => {
+	saveInvoiceData('double')
+})
+
+// Обработчики кнопок
+
+//11
+// Обработчики кнопок

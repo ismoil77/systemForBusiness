@@ -33,6 +33,9 @@
 			<button class="btn info-btn" id="viewInvoicesBtn">
 				🧾 Мои накладные
 			</button>
+			<button class="btn warning-btn" id="todayInvoicesBtn">
+	📋 Сегодняшние накладные
+</button>
 			<button class="btn info-btn" id="backupDataBtn">
 				🔄 Резервное копирование данных
 			</button>
@@ -250,9 +253,17 @@
 			<button type="button" id="addItemBtn" class="btn info-btn">
 				+ Добавить товар
 			</button>
-			<button type="button" id="saveInvoiceBtn" class="btn info-btn">
-				💾 Сохранить накладную
-			</button>
+			<div style="display: flex; gap: 10px; margin-top: 10px;">
+	<button type="button" id="saveInvoiceBtn" class="btn info-btn">
+		💾 Только сохранить
+	</button>
+	<button type="button" id="printSaveInvoiceBtn" class="btn warning-btn">
+		🖨💾 Печать + Сохранить
+	</button>
+	<button type="button" id="printDoubleSaveInvoiceBtn" class="btn warning-btn">
+		🖨🖨💾 Двойная печать + Сохранить
+	</button>
+</div>
 
 			<!-- Предпросмотр -->
 			<div id="invoicePreview" style="margin-top: 20px; display: none">
@@ -302,6 +313,34 @@
 	<div id="zonesList" style="max-height: 400px; overflow-y: auto;">
 		<!-- Здесь будут зоны -->
 	</div>
+</dialog>
+<dialog id="todayInvoicesDialog" class="invoice-dialog">
+	<button class="btn delete-btn" id="closeTodayInvoices">Закрыть</button>
+	<h2>📋 Сегодняшние накладные</h2>
+	
+<div style="margin-bottom: 15px; display: flex; gap: 10px;">
+		<button class="btn info-btn" id="printAllTodayBtn">🖨 Печать всех (одинарная)</button>
+		<button class="btn warning-btn" id="printAllTodayDoubleBtn">🖨🖨 Печать всех (двойная)</button>
+	</div>
+	
+	<div id="todayInvoicesList"></div>
+</dialog>
+
+<!-- Диалог редактирования сегодняшней накладной -->
+<dialog id="editTodayInvoiceDialog" class="invoice-dialog">
+	<button class="btn delete-btn" onclick="this.closest('dialog').close()">Закрыть</button>
+	<h2>Редактировать накладную</h2>
+	
+	<div id="editTodayItems">
+		<!-- Товары будут добавлены динамически -->
+	</div>
+	
+	<button type="button" class="btn info-btn" onclick="document.getElementById('editTodayItems').appendChild(createEditItemElement())">
+		+ Добавить товар
+	</button>
+	<button type="button" class="btn warning-btn" id="saveEditTodayInvoice">
+		💾 Сохранить изменения
+	</button>
 </dialog>
 		<div id="loading-overlay" class="loading-overlay" style="display: none">
 			<div class="spinner"></div>
