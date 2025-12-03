@@ -1980,7 +1980,7 @@ function printClientHistory(client) {
 	`
 
 	// Открываем в НОВОМ окне с уникальным именем
-	const uniqueName = `invoice_${invoice.id}_${Date.now()}`
+	const uniqueName = `invoice_${client.id}_${Date.now()}`
 	const win = window.open('', uniqueName, 'width=800,height=600')
 	if (win) {
 		win.document.write(printContent)
