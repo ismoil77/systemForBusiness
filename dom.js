@@ -1869,6 +1869,7 @@ if (originalBackupBtn) {
 
 // === ПЕЧАТЬ ИСТОРИИ КЛИЕНТА ===
 // === ПЕЧАТЬ ИСТОРИИ КЛИЕНТА ===
+// === ПЕЧАТЬ ИСТОРИИ КЛИЕНТА ===
 function printClientHistory(client) {
 	// Общая сумма долгов
 	const totalDebtHistory = (client.creditHistory || []).reduce((sum, item) => {
@@ -1979,8 +1980,8 @@ function printClientHistory(client) {
 		</html>
 	`
 
-	// Открываем в НОВОМ окне с уникальным именем
-	const uniqueName = `invoice_${invoice.id}_${Date.now()}`
+	// ИСПРАВЛЕНО: используем client.id вместо invoice.id
+	const uniqueName = `client_history_${client.id}_${Date.now()}`
 	const win = window.open('', uniqueName, 'width=800,height=600')
 	if (win) {
 		win.document.write(printContent)
@@ -1989,7 +1990,6 @@ function printClientHistory(client) {
 	} else {
 		alert('Пожалуйста, разрешите всплывающие окна для печати')
 	}
-
 }
 
 // Вспомогательная функция для генерации таблицы
