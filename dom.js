@@ -434,8 +434,18 @@ function openClientInfo(client) {
 	if (!navigator.onLine) return
 	// === КНОПКА ПЕЧАТИ ИСТОРИИ КЛИЕНТА ===
 	const printHistoryBtn = dialogInfo.querySelector('.print-client-history-btn')
+	const sendTelegramHistoryBtn = dialogInfo.querySelector('.send-telegram-client-history-btn')
+
+
+
+
+
+	
 	if (printHistoryBtn) {
 		printHistoryBtn.onclick = () => printClientHistory(client)
+	}
+	if (sendTelegramHistoryBtn) {
+		sendTelegramHistoryBtn.onclick = () => sendTelegramClientHistory(client)
 	}
 	currentClientId = client.id
 
@@ -892,6 +902,97 @@ async function loadActivityLog(dateFilter = null) {
 
 // === ПЕЧАТЬ БЕЗ КНОПОК ДЕЙСТВИЙ ===
 const printBtn = document.querySelector('.print-btn')
+
+const BtnUserCredit = document.querySelector('.btn-user-credit');
+
+// Подключаем jsPDF через CDN или import { jsPDF } ...
+const { jsPDF } = window.jspdf;
+
+BtnUserCredit.addEventListener('click', async () => {
+    const table = document.getElementById('clients-table');
+    if (!table) return alert('Таблица не найдена!');
+
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    if (!rows.length) return alert('Нет клиентов для отправки!');
+
+    const chunkSize = 30; // строки на страницу
+    const chunks = [];
+    for (let i = 0; i < rows.length; i += chunkSize) {
+        chunks.push(rows.slice(i, i + chunkSize));
+    }
+
+    const TELEGRAM_BOT_TOKEN = '8432972923:AAG0bGtE8_3x3V8s6LPqRhJ73YtOXIKfj04';
+    const CHAT_ID = -1003297792986;
+    const THREAD_ID = 515;
+
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.top = '-9999px';
+    container.style.left = '-9999px';
+    document.body.appendChild(container);
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageHeight = pdf.internal.pageSize.height;
+    const pageWidth = pdf.internal.pageSize.width;
+
+    try {
+        for (let i = 0; i < chunks.length; i++) {
+            const tableClone = table.cloneNode(true);
+            const tbody = tableClone.querySelector('tbody');
+            tbody.innerHTML = '';
+            chunks[i].forEach(row => {
+                const newRow = row.cloneNode(true);
+                newRow.querySelectorAll('.no-print, .btn, .action').forEach(cell => cell.remove());
+                tbody.appendChild(newRow);
+            });
+
+            tableClone.querySelectorAll('tr').forEach(tr => tr.style.height = '25px');
+            tableClone.querySelectorAll('td, th').forEach(td => {
+                td.style.padding = '4px 6px';
+                td.style.fontSize = '12px';
+            });
+
+            container.innerHTML = '';
+            container.appendChild(tableClone);
+
+            // --- 1. Отправка картинки ---
+            const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#fff' });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const formData = new FormData();
+            formData.append('photo', blob, `clients_credit_page_${i+1}.png`);
+            await fetch(
+                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto?chat_id=${CHAT_ID}&message_thread_id=${THREAD_ID}&caption=${encodeURIComponent(`Список клиентов и кредитов на ${new Date().toLocaleString()} (страница ${i+1}/${chunks.length})`)}`,
+                { method: 'POST', body: formData }
+            );
+
+            // --- 2. Добавляем в PDF ---
+            const imgData = canvas.toDataURL('image/png');
+            if (i > 0) pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 5, 5, pageWidth-10, pageHeight-10); // масштабируем под страницу
+        }
+
+        // --- 3. Отправка PDF ---
+        const pdfBlob = pdf.output('blob');
+        const pdfForm = new FormData();
+        pdfForm.append('document', pdfBlob, `clients_credit_${new Date().toLocaleDateString()}.pdf`);
+        await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument?chat_id=${CHAT_ID}&message_thread_id=${THREAD_ID}`,
+            { method: 'POST', body: pdfForm }
+        );
+
+        alert('Список клиентов успешно отправлен в Telegram!');
+    } catch (err) {
+        console.error(err);
+        alert('Ошибка: ' + err.message);
+    } finally {
+        document.body.removeChild(container);
+    }
+});
+
+
+
+
+
 
 printBtn?.addEventListener('click', () => {
 	const table = document.getElementById('clients-table')
@@ -1991,6 +2092,156 @@ function printClientHistory(client) {
 		alert('Пожалуйста, разрешите всплывающие окна для печати')
 	}
 }
+async function sendTelegramClientHistory(client) {
+    if (!client) {
+        alert('Клиент не выбран');
+        return;
+    }
+
+    const debtHistory = client.creditHistory || [];
+    const paymentHistory = client.viruchka || [];
+    const maxRowsPerPage = 40; // Максимум записей на одной фотографии
+
+    function chunkArray(array, size) {
+        const chunks = [];
+        for (let i = 0; i < array.length; i += size) {
+            chunks.push(array.slice(i, i + size));
+        }
+        return chunks;
+    }
+
+    function renderHistoryTable(data, headers) {
+        return `<table style="width:100%; border-collapse: collapse; border:1px solid #000; font-size:12px;">
+            <thead><tr>${headers.map(h => `<th style="border:1px solid #000; padding:4px; background:#f0f0f0;color:black;">${h}</th>`).join('')}</tr></thead>
+            <tbody>
+                ${data.map(row => `<tr>${row.map(cell => `<td style="border:1px solid #000; padding:3px;">${cell}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+        </table>`;
+    }
+
+    const debtChunks = chunkArray(debtHistory, maxRowsPerPage);
+    const paymentChunks = chunkArray(paymentHistory, maxRowsPerPage);
+    const maxChunks = Math.max(debtChunks.length, paymentChunks.length);
+
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.zIndex = '-1000';
+    container.style.opacity = '0';
+    document.body.appendChild(container);
+
+    const TELEGRAM_BOT_TOKEN = '8432972923:AAG0bGtE8_3x3V8s6LPqRhJ73YtOXIKfj04';
+    const CHAT_ID = -1003297792986;
+    const THREAD_ID = 513;
+
+    try {
+        // --- 1. Отправка фотографий ---
+        for (let i = 0; i < maxChunks; i++) {
+            const debts = debtChunks[i] || [];
+            const payments = paymentChunks[i] || [];
+
+            const htmlContent = `
+                <div id="clientHistory" style="width:700px; padding:10px; font-family:Arial, sans-serif; font-size:12px; background:#fdfdfd; color:#333;">
+                    <h3 style="text-align:center; margin:5px 0;">История клиента</h3>
+                    <p><strong>Имя:</strong> ${client.client}</p>
+                    <p><strong>Телефон:</strong> ${client.phoneNumber?.[0] || '—'}</p>
+                    <p><strong>Место:</strong> ${client.place || '—'}</p>
+                    <p><strong>Текущий долг:</strong> ${client.credit || 0} сомони</p>
+
+                    <h4 style="margin:5px 0;">Долги</h4>
+                    ${renderHistoryTable(debts, ['Дата','Сумма','Что купил'])}
+
+                    <h4 style="margin:5px 0;">Выплаты</h4>
+                    ${renderHistoryTable(payments, ['Дата','Сумма','Способ оплаты'])}
+
+                    <p style="text-align:right; font-size:10px;">Страница ${i+1}/${maxChunks} — ${new Date().toLocaleString()}</p>
+                </div>
+            `;
+
+            container.innerHTML = htmlContent;
+            const element = container.querySelector('#clientHistory');
+
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#fdfdfd' });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) throw new Error('Не удалось создать изображение');
+
+            const formData = new FormData();
+            formData.append('photo', blob, `client_history_${client.id}_page_${i+1}.png`);
+
+            await fetch(
+                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto?chat_id=${CHAT_ID}&message_thread_id=${THREAD_ID}&caption=${encodeURIComponent(`История клиента ${client.client} — страница ${i+1}/${maxChunks} на ${new Date().toLocaleString()}`)}`,
+                { method: 'POST', body: formData }
+            );
+        }
+
+        // --- 2. Отправка полного PDF ---
+  // --- Формирование PDF ---
+const { jsPDF } = window.jspdf;
+const pdf = new jsPDF('p', 'pt', 'a4');
+const pdfWidth = pdf.internal.pageSize.getWidth();
+const pdfHeight = pdf.internal.pageSize.getHeight();
+
+for (let i = 0; i < maxChunks; i++) {
+    const debts = debtChunks[i] || [];
+    const payments = paymentChunks[i] || [];
+
+    const htmlContent = `
+        <div style="font-family:Arial; font-size:12px; padding:10px; width:700px; background:#fdfdfd;">
+            <h2 style="text-align:center;">История клиента</h2>
+            <p><strong>Имя:</strong> ${client.client}</p>
+            <p><strong>Телефон:</strong> ${client.phoneNumber?.[0] || '—'}</p>
+            <p><strong>Место:</strong> ${client.place || '—'}</p>
+            <p><strong>Текущий долг:</strong> ${client.credit || 0} сомони</p>
+            <h3>Долги</h3>
+            ${renderHistoryTable(debts, ['Дата','Сумма','Что купил'])}
+            <h3>Выплаты</h3>
+            ${renderHistoryTable(payments, ['Дата','Сумма','Способ оплаты'])}
+            <p style="text-align:right; font-size:10px;">Страница ${i+1}/${maxChunks} — ${new Date().toLocaleString()}</p>
+        </div>
+    `;
+    container.innerHTML = htmlContent;
+    const element = container.firstElementChild;
+
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#fdfdfd' });
+    const imgData = canvas.toDataURL('image/png');
+
+    // Рассчитываем масштаб, чтобы влезло в PDF
+    const ratio = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
+    const imgWidth = canvas.width * ratio;
+    const imgHeight = canvas.height * ratio;
+    const x = (pdfWidth - imgWidth) / 2;
+    const y = (pdfHeight - imgHeight) / 2;
+
+    if (i > 0) pdf.addPage();
+    pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+}
+
+// Отправка PDF в Telegram
+const pdfBlob = pdf.output('blob');
+const pdfName = `История_${client.client}_${new Date().toISOString().slice(0,10)}.pdf`;
+const formData = new FormData();
+formData.append('document', pdfBlob, pdfName);
+
+await fetch(
+    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument?chat_id=${CHAT_ID}&message_thread_id=${THREAD_ID}&caption=${encodeURIComponent(`Полная история клиента  ${client.client} на ${new Date().toLocaleString()} `)}`,
+    { method: 'POST', body: formData }
+);
+
+
+        alert('История клиента успешно отправлена в Telegram!');
+
+    } catch (err) {
+        console.error('Ошибка при отправке истории:', err);
+        alert('Ошибка: ' + err.message);
+    } finally {
+        document.body.removeChild(container);
+    }
+}
+
+
+// Назначаем на кнопку
+
 
 // Вспомогательная функция для генерации таблицы
 function renderHistoryTable(data, headers) {
@@ -2000,7 +2251,7 @@ function renderHistoryTable(data, headers) {
 
 	let html = '<table><thead><tr>'
 	headers.forEach(header => {
-		html += `<th>${header}</th>`
+		html += `<th style="color:black">${header}</th>`
 	})
 	html += '</tr></thead><tbody>'
 
@@ -3580,3 +3831,233 @@ document.getElementById('printDoubleSaveInvoiceBtn')?.addEventListener('click', 
 
 //11
 // Обработчики кнопок
+document.getElementById('sendInvoiceToTelegramBtn').addEventListener('click', async () => {
+    // --- 1. СБОР ДАННЫХ ---
+    const clientId = Number(invoiceClientSelect.value);
+    
+    if (isNaN(clientId)) {
+        alert('Выберите клиента');
+        return;
+    }
+
+    const invoiceDateInput = document.getElementById('invoiceDate');
+    const invoiceDate = invoiceDateInput?.value;
+
+    if (!clientId) {
+        alert('Выберите клиента');
+        return;
+    }
+    if (!invoiceDate) {
+        alert('Укажите дату накладной');
+        return;
+    }
+
+    const items = getInvoiceItems();
+    if (items.length === 0) {
+        alert('Добавьте хотя бы один товар');
+        return;
+    }
+
+    const client = invoiceClients.find(c => c.id === clientId);
+    if (!client) return;
+
+    // --- 2. ФУНКЦИЯ ГЕНЕРАЦИИ HTML (СТИЛЬ ИЗ PRINTINVOICE) ---
+    function generateInvoiceHtml(invoice, clientName, place, phoneNumber) {
+        const formattedDate = invoice.createdAt
+            ? new Date(invoice.createdAt).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+
+        // Генерируем строки таблицы (БЕЗ кнопки удаления, так как это картинка)
+        const itemsHtml = invoice.items.map(item => `
+            <tr>
+                <td style="color:'black'">${item.name}</td>
+                <td style="color:'black'">${item.quantity}</td>
+                <td style="color:'black'">${item.price.toFixed(2)}</td>
+                <td class="sum" style="color:'black'">${item.total.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        return `
+        <div id="invoiceToSend" style="
+            width: 800px; 
+            padding: 40px; 
+            background: #fdfdfd; 
+            font-family: 'Arial', sans-serif; 
+            color: #333;
+            box-sizing: border-box;
+        ">
+            <style>
+                #invoiceToSend * { box-sizing: border-box; }
+                #invoiceToSend h1 { text-align: center; margin-bottom: 10px; font-size: 24px; }
+                #invoiceToSend .header, #invoiceToSend .details { display: flex; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; }
+                #invoiceToSend .header div, #invoiceToSend .details div { flex: 1 1 45%; margin-bottom: 10px; }
+                #invoiceToSend label { font-weight: bold; display: block; }
+                #invoiceToSend input[type="text"], #invoiceToSend input[type="date"] {
+                    width: 100%; height: 30px; padding: 5px; margin-top: 4px;
+                    border: 1px solid #ccc; border-radius: 4px; font-weight: 600; font-size: medium;
+                    background: #fff; /* Для четкости на картинке */
+                }
+                #invoiceToSend table {
+  width: 100%;
+  border-collapse: separate; /* вместо collapse */
+  border-spacing: 0;
+  border-radius: 8px;
+  overflow: hidden; /* чтобы скругление работало */
+  border: 1px solid #000;
+}
+                #invoiceToSend th, #invoiceToSend td { border: 1px solid #888; padding: 8px; text-align: left; }
+                #invoiceToSend th { background-color: #f0f0f0; }
+                #invoiceToSend .sum { text-align: right; }
+                #invoiceToSend .total { text-align: right; font-weight: bold; margin-top: 10px; font-size: 16px; }
+                #invoiceToSend .signature { margin-top: 30px; display: flex; justify-content: space-between; }
+                #invoiceToSend .signature div { text-align: center; }
+                #invoiceToSend .signature span { display: block; border-top: 1px solid #000; width: 200px; margin: 5px auto 0; padding-top: 5px; }
+            </style>
+
+            <h1>Накладная</h1>
+
+            <div class="header">
+                <div style="margin-right: 20px;">
+                    <label>Номер накладной:</label>
+                    <input type="text" value="${invoice.invoiceNumber}" readonly>
+                </div>
+                <div>
+                    <label>Дата:</label>
+                    <input type="date" value="${formattedDate}" readonly>
+                </div>
+            </div>
+
+            <div class="details">
+                <div style="margin-right: 20px;">
+                    <label>Компания:</label>
+                    <input type="text" value="M.M.C +992 988-66-77-75" readonly>
+                </div>
+                <div>
+                    <label>Клиент: ${phoneNumber}</label>
+                    <input type="text" value="${clientName + ' ' + place}" readonly>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                       <th style="color:black; font-weight:00">Наименование товара</th>
+<th style="color:black; font-weight:700">Кол-во</th>
+<th style="color:black; font-weight:700">Цена</th>
+<th style="color:black; font-weight:700">Сумма</th>
+
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+            </table>
+
+            <div class="total">
+                Общая сумма: <span id="totalSum">${invoice.totalAmount.toFixed(2)}</span> сомони.
+            </div>
+
+            <div class="signature">
+                <div>
+                    Подпись клиента: <span></span>
+                </div>
+                <div>
+                    Подпись: 
+                    <img src="./ПОДПИСЬ_ИСМИОЛ-removebg-preview.png" alt="Signature" style="height: 60px; width:60px; margin-bottom: 5px; display:block; margin: 0 auto;">
+                    <span></span>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+
+    showLoading();
+
+    try {
+        const now = Date.now();
+        const datePart = invoiceDate.replace(/-/g, '');
+        const randomPart = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+        const invoiceNumber = `INV-${datePart}-${randomPart}`;
+
+        const newInvoice = {
+            id: `inv_${now}`,
+            invoiceNumber,
+            items,
+            totalAmount: items.reduce((sum, item) => sum + item.total, 0),
+            createdAt: new Date(invoiceDate).toISOString(),
+        };
+
+        const invoiceHtml = generateInvoiceHtml(
+            newInvoice,
+            client.client,
+            client.place,
+            client.phoneNumber?.[0] || ''
+        );
+
+        // --- 3. РЕНДЕРИНГ (ИСПРАВЛЕННЫЙ МЕТОД) ---
+        
+        // Создаем контейнер: фиксированный, но прозрачный и на заднем плане
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.zIndex = '-1000'; // Под контентом
+        container.style.opacity = '0';    // Невидим, но рендерится
+        container.innerHTML = invoiceHtml;
+
+        document.body.appendChild(container);
+        const invoiceElement = container.querySelector('#invoiceToSend');
+
+        // Ждем загрузки картинок (особенно подписи) и стилей
+        await new Promise(r => setTimeout(r, 500)); 
+
+        const canvas = await html2canvas(invoiceElement, {
+            scale: 2, // Высокое качество
+            useCORS: true, // Разрешаем загрузку внешних картинок (если будут)
+            backgroundColor: '#fdfdfd' // Цвет фона как в CSS
+        });
+
+        // Удаляем контейнер после создания скриншота
+        document.body.removeChild(container);
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        
+        if (!blob) {
+            throw new Error("Не удалось создать изображение накладной");
+        }
+
+        // --- 4. ОТПРАВКА В TELEGRAM (РАБОЧИЙ ТОКЕН) ---
+        
+        const formData = new FormData();
+        formData.append("photo", blob, `invoice_${invoiceNumber}.png`);
+
+        const TELEGRAM_BOT_TOKEN = "8432972923:AAG0bGtE8_3x3V8s6LPqRhJ73YtOXIKfj04"; // <-- ВАШ РАБОЧИЙ ТОКЕН
+        const CHAT_ID = -1003297792986;
+        const THREAD_ID = 4;
+
+        const response = await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto` +
+            `?chat_id=${CHAT_ID}&message_thread_id=${THREAD_ID}&caption=${encodeURIComponent(`Накладная №${invoiceNumber} клиента ${client?.client} ${client?.place}`)}`,
+            {
+                method: "POST",
+                body: formData
+            }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error("Telegram Error:", result);
+            throw new Error(`Ошибка API (${result.error_code}): ${result.description}`);
+        }
+
+        alert('Накладная успешно отправлена в Telegram');
+
+    } catch (error) {
+        console.error('Ошибка при отправке накладной в Telegram:', error);
+        alert('Ошибка: ' + error.message);
+    } finally {
+        hideLoading();
+		  saveInvoiceData()
+    }
+});

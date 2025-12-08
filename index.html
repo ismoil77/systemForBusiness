@@ -27,6 +27,7 @@
 			/>
 			<button class="addBtnClient btn info-btn">+ Добавить клиента</button>
 			<button class="btn print-btn">🖨 Печать</button>
+			<button class="btn btn-user-credit">🖨 Отправить остаток в телеграм</button>
 			<button class="btn info-btn" id="createInvoiceBtn">
 				📄 Создать накладную
 			</button>
@@ -100,7 +101,9 @@
 		<!-- Информация о клиенте -->
 		<dialog class="dialogInfo">
 			<button class="dialogInfoClose btn delete-btn">Закрыть</button><br />
-			<div><button class="btn print-btn print-client-history-btn">🖨 Печать истории клиента</button></div>
+			<div><button class="btn print-btn print-client-history-btn">🖨 Печать историю клиента</button>
+			<button class="btn print-btn send-telegram-client-history-btn">🖨 Отправить историю клиента на телеграм</button>
+			</div>
 			<label class="dataToday22"></label><br />
 			<label class="placeInfo"></label><br />
 			<label class="clientInfo"></label><br />
@@ -263,6 +266,9 @@
 	<button type="button" id="printDoubleSaveInvoiceBtn" class="btn warning-btn">
 		🖨🖨💾 Двойная печать + Сохранить
 	</button>
+	<button type="button" id="sendInvoiceToTelegramBtn" class="btn info-btn">
+    📨 Отправить в Telegram
+  </button>
 </div>
 
 			<!-- Предпросмотр -->

@@ -739,3 +739,63 @@ textarea[readonly] {
 		gap: 5px;
 	}
 }
+.btn-user-credit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    background-color: #0088cc; /* Telegram голубой */
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px; /* скругление как в Telegram */
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    text-decoration: none;
+}
+
+.btn-user-credit:hover {
+    background-color: #007ab8;
+    transform: translateY(-1px);
+}
+
+.btn-user-credit:active {
+    background-color: #006ba1;
+    transform: translateY(1px);
+}
+
+.btn-user-credit:disabled {
+    background-color: #b0d4e8;
+    cursor: not-allowed;
+}
+.send-telegram-client-history-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    background-color: #0088cc; /* Telegram голубой */
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px; /* скругление как в Telegram */
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    text-decoration: none;
+}
+
+.send-telegram-client-history-btn:hover {
+    background-color: #007ab8;
+    transform: translateY(-1px);
+}
+
+.send-telegram-client-history-btn:active {
+    background-color: #006ba1;
+    transform: translateY(1px);
+}
+
+.send-telegram-client-history-btn:disabled {
+    background-color: #b0d4e8;
+    cursor: not-allowed;
+}
