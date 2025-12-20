@@ -1811,6 +1811,8 @@ async function createFullBackup() {
 		const collections = [
 			'DilobarQurbanova',
 			'MamatkulovMurodullo',
+			'DilangezZhabborova',
+			'zone',
 			'invoice',
 			'activityLog',
 		]
@@ -1829,9 +1831,11 @@ async function createFullBackup() {
 		// 2. Создаём summary.json
 		const totalClients =
 			(data.DilobarQurbanova?.length || 0) +
+			(data.DilangezZhabborova?.length || 0) +
 			(data.MamatkulovMurodullo?.length || 0)
 		const totalDebt = [
 			...(data.DilobarQurbanova || []),
+			...(data.DilangezZhabborova || []),
 			...(data.MamatkulovMurodullo || []),
 		].reduce((sum, c) => sum + (parseFloat(c.credit) || 0), 0)
 
@@ -1839,9 +1843,15 @@ async function createFullBackup() {
 			totalClients,
 			totalDebt: Math.round(totalDebt),
 			dilobarClients: data.DilobarQurbanova?.length || 0,
+			dilangezClients: data.DilangezZhabborova?.length || 0,
 			murodulloClients: data.MamatkulovMurodullo?.length || 0,
 			dilobarDebt:
 				data.DilobarQurbanova?.reduce(
+					(s, c) => s + (parseFloat(c.credit) || 0),
+					0
+				) || 0,
+				dilangezDebt:
+				data.DilangezZhabborova?.reduce(
 					(s, c) => s + (parseFloat(c.credit) || 0),
 					0
 				) || 0,

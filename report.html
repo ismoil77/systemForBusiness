@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>📊 Отчёты и аналитика - Система управления клиентами</title>
+		<style>
+			/* === СБРОС И БАЗОВЫЕ СТИЛИ === */
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			:root {
+				--primary: #4361ee;
+				--primary-dark: #3a56d4;
+				--success: #06d6a0;
+				--danger: #ef476f;
+				--warning: #ffd166;
+				--light: #f8f9fa;
+				--dark: #212529;
+				--gray: #6c757d;
+				--border: #dee2e6;
+				--shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+				--radius: 12px;
+				--transition: all 0.3s ease;
+			}
+
+			body {
+				font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+				background: linear-gradient(135deg, #f5f7fa 0%, #e4edf9 100%);
+				color: var(--dark);
+				line-height: 1.6;
+				padding: 20px;
+				min-height: 100vh;
+			}
+
+			.container {
+				max-width: 1400px;
+				margin: 0 auto;
+			}
+
+			/* === ЗАГОЛОВОК === */
+			.header {
+				background: white;
+				padding: 30px;
+				border-radius: var(--radius);
+				box-shadow: var(--shadow);
+				margin-bottom: 24px;
+				text-align: center;
+			}
+
+			.header h1 {
+				color: var(--primary);
+				font-size: 2.5rem;
+				margin-bottom: 10px;
+			}
+
+			.header p {
+				color: var(--gray);
+				font-size: 1.1rem;
+			}
+
+			/* === ПАНЕЛЬ ФИЛЬТРОВ === */
+			.filters {
+				background: white;
+				padding: 25px;
+				border-radius: var(--radius);
+				box-shadow: var(--shadow);
+				margin-bottom: 24px;
+			}
+
+			.filters h2 {
+				color: var(--dark);
+				margin-bottom: 20px;
+				font-size: 1.5rem;
+			}
+
+			.filter-row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 15px;
+				align-items: flex-end;
+			}
+
+			.filter-group {
+				flex: 1;
+				min-width: 200px;
+			}
+
+			.filter-group label {
+				display: block;
+				margin-bottom: 8px;
+				font-weight: 600;
+				color: var(--dark);
+			}
+
+			.filter-group select,
+			.filter-group input {
+				width: 100%;
+				padding: 12px 16px;
+				border: 2px solid var(--border);
+				border-radius: var(--radius);
+				font-size: 1rem;
+				transition: var(--transition);
+			}
+
+			.filter-group select:focus,
+			.filter-group input:focus {
+				border-color: var(--primary);
+				outline: none;
+				box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+			}
+
+			/* === КНОПКИ === */
+			.btn {
+				padding: 12px 24px;
+				border: none;
+				border-radius: var(--radius);
+				font-weight: 600;
+				font-size: 1rem;
+				cursor: pointer;
+				transition: var(--transition);
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+				min-width: 200px;
+			}
+
+			.btn:hover {
+				opacity: 0.9;
+				transform: translateY(-2px);
+				box-shadow: var(--shadow);
+			}
+
+			.btn:active {
+				transform: translateY(0);
+			}
+
+			.btn-primary {
+				background: linear-gradient(
+					135deg,
+					var(--primary) 0%,
+					var(--primary-dark) 100%
+				);
+				color: white;
+			}
+
+			.btn-success {
+				background: var(--success);
+				color: white;
+			}
+
+			.btn-secondary {
+				background: var(--gray);
+				color: white;
+			}
+
+			/* === КОНТЕНТ ОТЧЁТОВ === */
+			.report-content {
+				background: white;
+				padding: 30px;
+				border-radius: var(--radius);
+				box-shadow: var(--shadow);
+				min-height: 400px;
+			}
+
+			.report-content h2 {
+				color: var(--primary);
+				margin-bottom: 20px;
+				font-size: 2rem;
+			}
+
+			.report-content h3 {
+				color: var(--dark);
+				margin-top: 25px;
+				margin-bottom: 15px;
+			}
+
+			.report-content p {
+				margin-bottom: 15px;
+				font-size: 1.1rem;
+			}
+
+			/* === ТАБЛИЦЫ ОТЧЁТОВ === */
+			.report-table {
+				width: 100%;
+				border-collapse: collapse;
+				margin: 20px 0;
+				box-shadow: var(--shadow);
+				border-radius: var(--radius);
+				overflow: hidden;
+			}
+
+			.report-table thead {
+				background: linear-gradient(
+					135deg,
+					var(--primary) 0%,
+					var(--primary-dark) 100%
+				);
+				color: white;
+			}
+
+			.report-table th {
+				padding: 15px;
+				text-align: left;
+				font-weight: 600;
+				font-size: 1rem;
+			}
+
+			.report-table td {
+				padding: 12px 15px;
+				border-bottom: 1px solid var(--border);
+			}
+
+			.report-table tbody tr:hover {
+				background: var(--light);
+				transition: var(--transition);
+			}
+
+			.report-table tfoot {
+				background: var(--light);
+				font-weight: 700;
+			}
+
+			.report-table tfoot td {
+				padding: 15px;
+				border-top: 2px solid var(--primary);
+			}
+
+			/* === SUMMARY БЛОК === */
+			.report-summary {
+				background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+				padding: 25px;
+				border-radius: var(--radius);
+				margin: 25px 0;
+				border-left: 5px solid var(--primary);
+			}
+
+			.report-summary h3 {
+				margin-top: 0;
+				color: var(--primary);
+			}
+
+			.report-summary p {
+				margin: 10px 0;
+				font-size: 1.1rem;
+			}
+
+			/* === ЗАГРУЗКА === */
+			.loading {
+				display: none;
+				text-align: center;
+				padding: 40px;
+				color: var(--gray);
+			}
+
+			.loading.active {
+				display: block;
+			}
+
+			.spinner {
+				border: 4px solid var(--border);
+				border-top: 4px solid var(--primary);
+				border-radius: 50%;
+				width: 50px;
+				height: 50px;
+				animation: spin 1s linear infinite;
+				margin: 0 auto 15px;
+			}
+
+			@keyframes spin {
+				0% {
+					transform: rotate(0deg);
+				}
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+
+			/* === ПУСТОЙ СТЕЙТ === */
+			.empty-state {
+				text-align: center;
+				padding: 60px 20px;
+				color: var(--gray);
+			}
+
+			.empty-state h3 {
+				font-size: 1.5rem;
+				margin-bottom: 10px;
+			}
+
+			/* === ПЕЧАТЬ === */
+			@media print {
+				body {
+					background: white;
+					padding: 0;
+				}
+
+				.filters,
+				.btn {
+					display: none !important;
+				}
+
+				.report-content {
+					box-shadow: none;
+				}
+			}
+
+			/* === АДАПТИВНОСТЬ === */
+			@media (max-width: 768px) {
+				.filter-row {
+					flex-direction: column;
+				}
+
+				.filter-group {
+					width: 100%;
+				}
+
+				.btn {
+					width: 100%;
+				}
+
+				.header h1 {
+					font-size: 1.8rem;
+				}
+
+				.report-table {
+					font-size: 0.9rem;
+				}
+
+				.report-table th,
+				.report-table td {
+					padding: 8px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<!-- ЗАГОЛОВОК -->
+			<div class="header">
+				<h1>📊 Отчёты и аналитика</h1>
+				<p>Система управления клиентами и продажами</p>
+			</div>
+
+			<!-- ПАНЕЛЬ ФИЛЬТРОВ -->
+			<div class="filters">
+				<h2>🔍 Параметры отчёта</h2>
+				<div class="filter-row">
+					<div class="filter-group">
+						<label for="reportType">Тип отчёта:</label>
+						<select id="reportType">
+							<option value="sales-by-employee">
+								💼 Продажи по работникам
+							</option>
+							<option value="active-clients">👥 Активные клиенты</option>
+							<option value="debt-analysis">💰 Анализ долгов</option>
+							<option value="top-clients">🏆 Топ клиентов по покупкам</option>
+						</select>
+					</div>
+
+					<div class="filter-group">
+						<label for="startDate">Дата начала:</label>
+						<input type="date" id="startDate" />
+					</div>
+
+					<div class="filter-group">
+						<label for="endDate">Дата окончания:</label>
+						<input type="date" id="endDate" />
+					</div>
+
+					<div class="filter-group">
+						<button class="btn btn-primary" id="generateBtn">
+							📈 Сгенерировать отчёт
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ЗАГРУЗКА -->
+			<div class="loading" id="loading">
+				<div class="spinner"></div>
+				<p>Загрузка данных...</p>
+			</div>
+
+			<!-- КОНТЕНТ ОТЧЁТОВ -->
+			<div class="report-content" id="reportContent">
+				<div class="empty-state">
+					<h3>📋 Выберите тип отчёта</h3>
+					<p>Настройте параметры выше и нажмите "Сгенерировать отчёт"</p>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
+			const reportTypeSelect = document.getElementById('reportType')
+			const startDateInput = document.getElementById('startDate')
+			const endDateInput = document.getElementById('endDate')
+			const generateBtn = document.getElementById('generateBtn')
+			const reportContent = document.getElementById('reportContent')
+			const loading = document.getElementById('loading')
+
+			// === ИНИЦИАЛИЗАЦИЯ ДАТ ===
+			function initDates() {
+				const today = new Date().toISOString().split('T')[0]
+				const monthAgo = new Date()
+				monthAgo.setDate(monthAgo.getDate() - 30)
+				const monthAgoStr = monthAgo.toISOString().split('T')[0]
+
+				startDateInput.value = monthAgoStr
+				endDateInput.value = today
+			}
+
+			// === ПОКАЗАТЬ/СКРЫТЬ ЗАГРУЗКУ ===
+			function showLoading() {
+				loading.classList.add('active')
+				reportContent.style.display = 'none'
+			}
+
+			function hideLoading() {
+				loading.classList.remove('active')
+				reportContent.style.display = 'block'
+			}
+
+			// === ФОРМАТИРОВАНИЕ ДАТЫ ===
+			function formatDate(dateStr) {
+				const date = new Date(dateStr)
+				return date.toLocaleDateString('ru-RU')
+			}
+
+			// === ОБРАБОТЧИК ГЕНЕРАЦИИ ОТЧЁТА ===
+			generateBtn.addEventListener('click', async () => {
+				const reportType = reportTypeSelect.value
+				const startDate = startDateInput.value
+				const endDate = endDateInput.value
+
+				if (!reportType || !startDate || !endDate) {
+					alert('Заполните все поля')
+					return
+				}
+
+				showLoading()
+
+				try {
+					switch (reportType) {
+						case 'sales-by-employee':
+							await generateSalesByEmployeeReport(startDate, endDate)
+							break
+						case 'active-clients':
+							await generateActiveClientsReport(startDate, endDate)
+							break
+						case 'debt-analysis':
+							await generateDebtAnalysisReport()
+							break
+						case 'top-clients':
+							await generateTopClientsReport(startDate, endDate)
+							break
+						default:
+							alert('Неизвестный тип отчёта')
+					}
+				} catch (err) {
+					console.error('Ошибка генерации отчёта:', err)
+					reportContent.innerHTML =
+						'<p style="color: red;">❌ Ошибка генерации отчёта. Проверьте подключение к интернету.</p>'
+				} finally {
+					hideLoading()
+				}
+			})
+
+			// === ОТЧЁТ: ПРОДАЖИ ПО РАБОТНИКАМ ===
+			async function generateSalesByEmployeeReport(startDate, endDate) {
+				try {
+					// Загружаем данные клиентов напрямую из API
+					const [dilobarRes, murodulloRes, dilangezRes] = await Promise.all([
+						fetch('https://7cf074eeac80e141.mokky.dev/DilobarQurbanova'),
+						fetch('https://7cf074eeac80e141.mokky.dev/MamatkulovMurodullo'),
+						fetch('https://7cf074eeac80e141.mokky.dev/DilangezZhabborova'),
+					])
+
+					const dilobarClients = await dilobarRes.json()
+					const murodulloClients = await murodulloRes.json()
+					const dilangezClients = await dilangezRes.json()
+
+					const employeeStats = {
+						Dilobar: { sales: 0, debts: 0, payments: 0 },
+						Murodullo: { sales: 0, debts: 0, payments: 0 },
+						Dilangez: { sales: 0, debts: 0, payments: 0 },
+					}
+
+					// Обрабатываем клиентов Dilobar
+					dilobarClients.forEach(client => {
+						// Продажи (долги) за период
+						;
+						const creditHistory = Array.isArray(client.creditHistory)
+  ? client.creditHistory
+  : []
+
+creditHistory.forEach(entry => {
+								const date = entry[0]
+								if (date >= startDate && date <= endDate) {
+									const amount =
+										parseFloat(entry[1].replace(/[^0-9.-]/g, '')) || 0
+									employeeStats.Dilobar.debts += amount
+									employeeStats.Dilobar.sales += amount
+								}
+							})
+						const viruchka = Array.isArray(client.viruchka)
+  ? client.viruchka
+  : []
+
+viruchka.forEach(entry => {
+
+								const date = entry[0]
+								if (date >= startDate && date <= endDate) {
+									const amount =
+										parseFloat(entry[1].replace(/[^0-9.-]/g, '')) || 0
+									employeeStats.Dilobar.payments += amount
+								}
+							})
+					})
+
+					// Обрабатываем клиентов Murodullo
+					murodulloClients.forEach(client => {
+						// Продажи (долги) за период
+						;const creditHistory = Array.isArray(client.creditHistory)
+  ? client.creditHistory
+  : []
+
+creditHistory.forEach(entry => {
+
+								const date = entry[0]
+								if (date >= startDate && date <= endDate) {
+									const amount =
+										parseFloat(entry[1].replace(/[^0-9.-]/g, '')) || 0
+									employeeStats.Murodullo.debts += amount
+									employeeStats.Murodullo.sales += amount
+								}
+							})
+							const viruchka = Array.isArray(client.viruchka)
+  ? client.viruchka
+  : []
+
+viruchka.forEach(entry => {
+
+								const date = entry[0]
+								if (date >= startDate && date <= endDate) {
+									const amount =
+										parseFloat(entry[1].replace(/[^0-9.-]/g, '')) || 0
+									employeeStats.Murodullo.payments += amount
+								}
+							})
+					})
+
+					// Обрабатываем клиентов Dilangez
+					dilangezClients.forEach(client => {
+						// Продажи (долги) за период
+						;(client.creditHistory || [])
+							.forEach(entry => {
+								const date = entry[0]
+								if (date >= startDate && date <= endDate) {
+									const amount =
+										parseFloat(entry[1].replace(/[^0-9.-]/g, '')) || 0
+									employeeStats.Dilangez.debts += amount
+									employeeStats.Dilangez.sales += amount
+								}
+							})
+						const viruchka = Array.isArray(client.viruchka)
+  ? client.viruchka
+  : []
+
+viruchka.forEach(entry => {
+
+								const date = entry[0]
+								if (date >= startDate && date <= endDate) {
+									const amount =
+										parseFloat(entry[1].replace(/[^0-9.-]/g, '')) || 0
+									employeeStats.Dilangez.payments += amount
+								}
+							})
+					})
+
+					let html = `
+					<h2>📊 Продажи по работникам</h2>
+					<p>Период: ${formatDate(startDate)} - ${formatDate(endDate)}</p>
+					<table class="report-table">
+						<thead>
+							<tr>
+								<th>Работник</th>
+								<th>Продажи (долги)</th>
+								<th>Выплаты собрано</th>
+								<th>Итого активность</th>
+							</tr>
+						</thead>
+						<tbody>
+				`
+
+					Object.keys(employeeStats).forEach(employee => {
+						const stats = employeeStats[employee]
+						const total = stats.sales + stats.payments
+
+						html += `
+						<tr>
+							<td><strong>${employee}</strong></td>
+							<td>${stats.debts.toFixed(0)} сом.</td>
+							<td>${stats.payments.toFixed(0)} сом.</td>
+							<td><strong>${total.toFixed(0)} сом.</strong></td>
+						</tr>
+					`
+					})
+
+					const totalSales =
+						employeeStats.Dilobar.sales +
+						employeeStats.Murodullo.sales +
+						employeeStats.Dilangez.sales
+					const totalPayments =
+						employeeStats.Dilobar.payments +
+						employeeStats.Murodullo.payments +
+						employeeStats.Dilangez.payments
+
+					html += `
+						</tbody>
+						<tfoot>
+							<tr>
+								<td><strong>ИТОГО:</strong></td>
+								<td><strong>${totalSales.toFixed(0)} сом.</strong></td>
+								<td><strong>${totalPayments.toFixed(0)} сом.</strong></td>
+								<td><strong>${(totalSales + totalPayments).toFixed(0)} сом.</strong></td>
+							</tr>
+						</tfoot>
+					</table>
+
+					<div class="report-summary">
+						<h3>Кто больше работал:</h3>
+						<p>${(() => {
+							const scores = {
+								Dilobar:
+									employeeStats.Dilobar.sales + employeeStats.Dilobar.payments,
+								Murodullo:
+									employeeStats.Murodullo.sales +
+									employeeStats.Murodullo.payments,
+								Dilangez:
+									employeeStats.Dilangez.sales +
+									employeeStats.Dilangez.payments,
+							}
+							const leader = Object.keys(scores).reduce((a, b) =>
+								scores[a] > scores[b] ? a : b
+							)
+							return '🏆 ' + leader + ' лидирует!'
+						})()}</p>
+					</div>
+
+					<button class="btn btn-success" onclick="window.print()">🖨 Печать отчёта</button>
+				`
+
+					reportContent.innerHTML = html
+				} catch (err) {
+					console.error(err)
+					reportContent.innerHTML =
+						'<p style="color: red;">❌ Ошибка загрузки данных для отчёта</p>'
+				}
+			}
+
+			// === ОТЧЁТ: АКТИВНЫЕ КЛИЕНТЫ ===
+			async function generateActiveClientsReport(startDate, endDate) {
+				try {
+					const [dilobarRes, murodulloRes, dilangezRes] = await Promise.all([
+						fetch('https://7cf074eeac80e141.mokky.dev/DilobarQurbanova'),
+						fetch('https://7cf074eeac80e141.mokky.dev/MamatkulovMurodullo'),
+						fetch('https://7cf074eeac80e141.mokky.dev/DilangezZhabborova'),
+					])
+
+					const dilobarClients = await dilobarRes.json()
+					const murodulloClients = await murodulloRes.json()
+					const dilangezClients = await dilangezRes.json()
+					const allClients = [
+						...dilobarClients.map(c => ({ ...c, owner: 'Dilobar' })),
+						...murodulloClients.map(c => ({ ...c, owner: 'Murodullo' })),
+						...dilangezClients.map(c => ({ ...c, owner: 'Dilangez' })),
+					]
+
+					const activeClients = allClients.filter(client => {
+						const hasActivity =
+							client.creditHistory?.some(h => {
+								const date = h[0]
+								return date >= startDate && date <= endDate
+							}) ||
+							client.viruchka?.some(v => {
+								const date = v[0]
+								return date >= startDate && date <= endDate
+							})
+
+						return hasActivity
+					})
+
+					activeClients.sort((a, b) => b.credit - a.credit)
+
+					let html = `
+					<h2>👥 Активные клиенты</h2>
+					<p>Период: ${formatDate(startDate)} - ${formatDate(endDate)}</p>
+					<p>Найдено активных клиентов: <strong>${activeClients.length}</strong></p>
+
+					<table class="report-table">
+						<thead>
+							<tr>
+								<th>№</th>
+								<th>Клиент</th>
+								<th>Место</th>
+								<th>Долг</th>
+								<th>Телефон</th>
+								<th>Менеджер</th>
+							</tr>
+						</thead>
+						<tbody>
+				`
+
+					activeClients.forEach((client, index) => {
+						html += `
+						<tr>
+							<td>${index + 1}</td>
+							<td><strong>${client.client}</strong></td>
+							<td>${client.place || '-'}</td>
+							<td>${(client.credit || 0).toFixed(0)} сом.</td>
+							<td>${client.phoneNumber?.[0] || '-'}</td>
+							<td>${client.owner}</td>
+						</tr>
+					`
+					})
+
+					const totalDebt = activeClients.reduce(
+						(sum, c) => sum + (c.credit || 0),
+						0
+					)
+
+					html += `
+						</tbody>
+						<tfoot>
+							<tr>
+								<td colspan="3"><strong>ИТОГО долг:</strong></td>
+								<td colspan="3"><strong>${totalDebt.toFixed(0)} сом.</strong></td>
+							</tr>
+						</tfoot>
+					</table>
+
+					<button class="btn btn-success" onclick="window.print()">🖨 Печать отчёта</button>
+				`
+
+					reportContent.innerHTML = html
+				} catch (err) {
+					console.error(err)
+					reportContent.innerHTML =
+						'<p style="color: red;">❌ Ошибка загрузки данных клиентов</p>'
+				}
+			}
+
+			// === ОТЧЁТ: АНАЛИЗ ДОЛГОВ ===
+			async function generateDebtAnalysisReport() {
+				try {
+					const [dilobarRes, murodulloRes, dilangezRes] = await Promise.all([
+						fetch('https://7cf074eeac80e141.mokky.dev/DilobarQurbanova'),
+						fetch('https://7cf074eeac80e141.mokky.dev/MamatkulovMurodullo'),
+						fetch('https://7cf074eeac80e141.mokky.dev/DilangezZhabborova'),
+					])
+
+					const dilobarClients = await dilobarRes.json()
+					const murodulloClients = await murodulloRes.json()
+					const dilangezClients = await dilangezRes.json()
+					const allClients = [
+						...dilobarClients.map(c => ({ ...c, owner: 'Dilobar' })),
+						...murodulloClients.map(c => ({ ...c, owner: 'Murodullo' })),
+						...dilangezClients.map(c => ({ ...c, owner: 'Dilangez' })),
+					]
+
+					const debtors = allClients.filter(c => c.credit > 0)
+					debtors.sort((a, b) => b.credit - a.credit)
+
+					const top10 = debtors.slice(0, 10)
+
+					let html = `
+					<h2>💰 Анализ долгов</h2>
+					<p>Всего клиентов с долгом: <strong>${debtors.length}</strong></p>
+
+					<h3>ТОП-10 должников:</h3>
+					<table class="report-table">
+						<thead>
+							<tr>
+								<th>№</th>
+								<th>Клиент</th>
+								<th>Место</th>
+								<th>Долг</th>
+								<th>Менеджер</th>
+							</tr>
+						</thead>
+						<tbody>
+				`
+
+					top10.forEach((client, index) => {
+						html += `
+						<tr>
+							<td>${index + 1}</td>
+							<td><strong>${client.client}</strong></td>
+							<td>${client.place || '-'}</td>
+							<td style="color: #ef476f;"><strong>${client.credit.toFixed(
+								0
+							)} сом.</strong></td>
+							<td>${client.owner}</td>
+						</tr>
+					`
+					})
+
+					const totalDebt = debtors.reduce((sum, c) => sum + c.credit, 0)
+					const avgDebt = totalDebt / debtors.length
+
+					html += `
+						</tbody>
+					</table>
+
+					<div class="report-summary">
+						<h3>Статистика:</h3>
+						<p>📊 Общий долг: <strong>${totalDebt.toFixed(0)} сомони</strong></p>
+						<p>📈 Средний долг: <strong>${avgDebt.toFixed(0)} сомони</strong></p>
+						<p>🔝 Самый большой долг: <strong>${
+							top10[0]?.credit.toFixed(0) || 0
+						} сомони</strong> (${top10[0]?.client || '-'})</p>
+					</div>
+
+					<button class="btn btn-success" onclick="window.print()">🖨 Печать отчёта</button>
+				`
+
+					reportContent.innerHTML = html
+				} catch (err) {
+					console.error(err)
+					reportContent.innerHTML =
+						'<p style="color: red;">❌ Ошибка загрузки данных</p>'
+				}
+			}
+
+			// === ОТЧЁТ: ТОП КЛИЕНТОВ ===
+			async function generateTopClientsReport(startDate, endDate) {
+				try {
+					const [dilobarRes, murodulloRes, dilangezRes] = await Promise.all([
+						fetch('https://7cf074eeac80e141.mokky.dev/DilobarQurbanova'),
+						fetch('https://7cf074eeac80e141.mokky.dev/MamatkulovMurodullo'),
+						fetch('https://7cf074eeac80e141.mokky.dev/DilangezZhabborova'),
+					])
+
+					const dilobarClients = await dilobarRes.json()
+					const murodulloClients = await murodulloRes.json()
+					const dilangezClients = await dilangezRes.json()
+					const allClients = [
+						...dilobarClients.map(c => ({ ...c, owner: 'Dilobar' })),
+						...murodulloClients.map(c => ({ ...c, owner: 'Murodullo' })),
+						...dilangezClients.map(c => ({ ...c, owner: 'Dilangez' })),
+					]
+
+					const clientsWithPurchases = allClients.map(client => {
+						const purchases = (client.creditHistory || [])
+							.filter(h => h[0] >= startDate && h[0] <= endDate)
+							.reduce((sum, h) => {
+								const amount = parseFloat(h[1].replace(/[^0-9.-]/g, '')) || 0
+								return sum + amount
+							}, 0)
+
+						return { ...client, purchases }
+					})
+
+					const topClients = clientsWithPurchases
+						.filter(c => c.purchases > 0)
+						.sort((a, b) => b.purchases - a.purchases)
+						.slice(0, 20)
+
+					let html = `
+					<h2>🏆 Топ клиентов по покупкам</h2>
+					<p>Период: ${formatDate(startDate)} - ${formatDate(endDate)}</p>
+
+					<table class="report-table">
+						<thead>
+							<tr>
+								<th>№</th>
+								<th>Клиент</th>
+								<th>Место</th>
+								<th>Сумма покупок</th>
+								<th>Текущий долг</th>
+								<th>Менеджер</th>
+							</tr>
+						</thead>
+						<tbody>
+				`
+
+					topClients.forEach((client, index) => {
+						html += `
+						<tr>
+							<td>${index + 1}</td>
+							<td><strong>${client.client}</strong></td>
+							<td>${client.place || '-'}</td>
+							<td style="color: #06d6a0;"><strong>${client.purchases.toFixed(
+								0
+							)} сом.</strong></td>
+							<td>${(client.credit || 0).toFixed(0)} сом.</td>
+							<td>${client.owner}</td>
+						</tr>
+					`
+					})
+
+					const totalPurchases = topClients.reduce(
+						(sum, c) => sum + c.purchases,
+						0
+					)
+
+					html += `
+						</tbody>
+						<tfoot>
+							<tr>
+								<td colspan="3"><strong>ИТОГО покупок:</strong></td>
+								<td colspan="3"><strong>${totalPurchases.toFixed(0)} сом.</strong></td>
+							</tr>
+						</tfoot>
+					</table>
+
+					<button class="btn btn-success" onclick="window.print()">🖨 Печать отчёта</button>
+				`
+
+					reportContent.innerHTML = html
+				} catch (err) {
+					console.error(err)
+					reportContent.innerHTML =
+						'<p style="color: red;">❌ Ошибка загрузки данных</p>'
+				}
+			}
+
+			// === ИНИЦИАЛИЗАЦИЯ ===
+			initDates()
+		</script>
+	</body>
+</html>

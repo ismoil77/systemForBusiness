@@ -3,6 +3,7 @@
 // === 1. ИСПРАВЛЕННЫЕ URL (БЕЗ ПРОБЕЛОВ!) ===
 let Api = 'https://7cf074eeac80e141.mokky.dev/DilobarQurbanova';
 let Api2 = 'https://7cf074eeac80e141.mokky.dev/MamatkulovMurodullo';
+let Api3 = 'https://7cf074eeac80e141.mokky.dev/DilangezZhabborova';
 
 // === 2. ГЛОБАЛЬНЫЕ ЭЛЕМЕНТЫ ===
 const odamSelect = document.querySelector('.odam');
@@ -44,7 +45,10 @@ export async function getActivityLog(dateFilter = null) {
 }
 // Меняем API при смене пользователя
 odamSelect.addEventListener('change', () => {
-	Api = getCurrentUser() === 'Murodullo' ? Api2 : 'https://7cf074eeac80e141.mokky.dev/DilobarQurbanova';
+	// Api = getCurrentUser() === 'Murodullo' ? Api2 : 'https://7cf074eeac80e141.mokky.dev/DilobarQurbanova';
+	Api = getCurrentUser() === 'Murodullo' ? Api2 
+     : getCurrentUser() === 'Dilangez' ? Api3
+     : 'https://7cf074eeac80e141.mokky.dev/DilobarQurbanova';
 	if (navigator.onLine) {
 		getData();
 	}
