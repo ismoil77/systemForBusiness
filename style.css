@@ -799,3 +799,31 @@ textarea[readonly] {
     background-color: #b0d4e8;
     cursor: not-allowed;
 }
+.telegram-choice-dialog {
+	border: none;
+	border-radius: 12px;
+	padding: 20px;
+	max-width: 350px;
+}
+.telegram-choice-dialog::backdrop {
+	background: rgba(0,0,0,0.5);
+}
+.telegram-choice-dialog h3 {
+	margin: 0 0 15px;
+	text-align: center;
+}
+.telegram-options {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.telegram-option {
+	padding: 12px;
+	font-size: 14px;
+}
+#closeTelegramChoice {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	padding: 5px 10px;
+}
