@@ -650,11 +650,16 @@ function renderPaymentHistory(client) {
 
 // === ДОБАВИТЬ ДОЛГ ===
 async function addDebt(client) {
+	const rawQty = qarzNechiInfo.value // Берем сырую строку для проверки
+   const rawPrice = qarzNarkhInfo.value
 	const what = qarzNimaInfo.value.trim()
 	const qty = parseFloat(qarzNechiInfo.value)
 	const price = parseFloat(qarzNarkhInfo.value)
 	const date = addDolgDate.value || todayISO
-
+if (rawQty.includes(',') || rawPrice.includes(',')) {
+   alert('Пожалуйста, используйте точку (.) вместо запятой (,) для дробных чисел')
+   return
+}
 	if (!what || isNaN(qty) || qty <= 0 || isNaN(price) || price <= 0) {
 		alert('Заполните все поля корректно (количество и цена > 0)')
 		return
