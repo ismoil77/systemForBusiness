@@ -4062,7 +4062,7 @@ document.getElementById('sendInvoiceToTelegramBtn').addEventListener('click', ()
             const formData = new FormData();
             formData.append("photo", blob, `invoice_${invoiceNumber}.png`);
 
-            const TELEGRAM_BOT_TOKEN = "8432972923:AAG0bGtE8_3x3V8s6LPqRhJ73YtOXIKfj04";
+            const TELEGRAM_BOT_TOKEN = "8844184443:AAH0Je5rH-hD0dCK_UKh9M89vTJSVE1oXhg";
 
             let url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto?chat_id=${chatId}&caption=${encodeURIComponent(`Накладная №${invoiceNumber} клиента ${client?.client} ${client?.place}`)}`;
             
