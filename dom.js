@@ -1451,7 +1451,7 @@ document.querySelectorAll('.print-invoice-double-btn').forEach(btn => {
 					)}</div>
 				</div>
 				<div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-					<div><strong>Компания:</strong> M.M.C +992 988-66-77-75 </div>
+					<div><strong>Компания:</strong> M.M.C </div>
 					<div><strong>Клиент: ${client?.phoneNumber}</strong> ${
 				clientName + ' ' + client?.place
 			}</div>
@@ -1746,7 +1746,7 @@ function printInvoice(invoice, clientName, place, phoneNumber) {
 			<div class="details">
 				<div>
 					<label>Компания:</label>
-					<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+					<input type="text" value="M.M.C" readonly>
 				</div>
 				<div>
 					<label>Клиент: ${phoneNumber}</label>
@@ -2599,7 +2599,7 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 					<div class="details">
 						<div>
 							<label>Компания:</label>
-							<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+							<input type="text" value="M.M.C" readonly>
 						</div>
 						<div>
 							<label>Клиент: ${phoneNumber}</label>
@@ -2654,7 +2654,7 @@ function printInvoiceDouble(invoice, clientName, place, phoneNumber) {
 					<div class="details">
 						<div>
 							<label>Компания:</label>
-							<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+							<input type="text" value="M.M.C" readonly>
 						</div>
 						<div>
 							<label>Клиент: ${phoneNumber}</label>
@@ -3224,7 +3224,7 @@ function printAllInvoicesSingle(invoices) {
 				<div class="details">
 					<div>
 						<label>Компания:</label>
-						<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+						<input type="text" value="M.M.C" readonly>
 					</div>
 					<div>
 						<label>Клиент: ${invoice.clientPhone}</label>
@@ -3439,7 +3439,7 @@ function printAllInvoicesDouble(invoices) {
 					<div class="details">
 						<div>
 							<label>Компания:</label>
-							<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+							<input type="text" value="M.M.C" readonly>
 						</div>
 						<div>
 							<label>Клиент: ${invoice.clientPhone}</label>
@@ -3483,7 +3483,7 @@ function printAllInvoicesDouble(invoices) {
 					<div class="details">
 						<div>
 							<label>Компания:</label>
-							<input type="text" value="M.M.C +992 988-66-77-75" readonly>
+							<input type="text" value="M.M.C" readonly>
 						</div>
 						<div>
 							<label>Клиент: ${invoice.clientPhone}</label>
@@ -3967,7 +3967,7 @@ document.getElementById('sendInvoiceToTelegramBtn').addEventListener('click', ()
                 <div class="details">
                     <div style="margin-right: 20px;">
                         <label>Компания:</label>
-                        <input type="text" value="M.M.C +992 988-66-77-75" readonly>
+                        <input type="text" value="M.M.C" readonly>
                     </div>
                     <div>
                         <label>Клиент: ${phoneNumber}</label>
