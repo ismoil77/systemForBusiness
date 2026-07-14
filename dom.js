@@ -934,7 +934,7 @@ BtnUserCredit.addEventListener('click', () => {
             chunks.push(rows.slice(i, i + chunkSize));
         }
 
-        const TELEGRAM_BOT_TOKEN = '8432972923:AAG0bGtE8_3x3V8s6LPqRhJ73YtOXIKfj04';
+        const TELEGRAM_BOT_TOKEN = '8927047063:AAG-DJ_vYyoKAengYOm1DtRzNo4fqKmteW0';
 
         const container = document.createElement('div');
         container.style.position = 'absolute';
