@@ -975,7 +975,7 @@ BtnUserCredit.addEventListener('click', () => {
                 const formData = new FormData();
                 formData.append('photo', blob, `clients_credit_page_${i+1}.png`);
 
-                let photoUrl = `https://api.telegram.org/bot${}/sendPhoto?chat_id=${chatId}&caption=${encodeURIComponent(`Список клиентов и кредитов на ${new Date().toLocaleString()} (страница ${i+1}/${chunks.length})`)}`;
+                let photoUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto?chat_id=${chatId}&caption=${encodeURIComponent(`Список клиентов и кредитов на ${new Date().toLocaleString()} (страница ${i+1}/${chunks.length})`)}`;
                 
                 if (threadId) {
                     photoUrl += `&message_thread_id=${threadId}`;
