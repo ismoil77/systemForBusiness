@@ -934,7 +934,7 @@ BtnUserCredit.addEventListener('click', () => {
             chunks.push(rows.slice(i, i + chunkSize));
         }
 
-        const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+        const TELEGRAM_BOT_TOKEN = "8927047063:AAEmi8RxizYGDJBpHT-JG0CrrzKAgGrQ9fk";
 
         const container = document.createElement('div');
         container.style.position = 'absolute';
@@ -2165,7 +2165,7 @@ async function sendTelegramClientHistory(client, chatId, threadId) {
     container.style.opacity = '0';
     document.body.appendChild(container);
 
-    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    const TELEGRAM_BOT_TOKEN = "8927047063:AAEmi8RxizYGDJBpHT-JG0CrrzKAgGrQ9fk";
 
     try {
         showLoading();
@@ -4062,7 +4062,7 @@ document.getElementById('sendInvoiceToTelegramBtn').addEventListener('click', ()
             const formData = new FormData();
             formData.append("photo", blob, `invoice_${invoiceNumber}.png`);
 
-            const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+            const TELEGRAM_BOT_TOKEN = "8927047063:AAEmi8RxizYGDJBpHT-JG0CrrzKAgGrQ9fk";
 
             let url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto?chat_id=${chatId}&caption=${encodeURIComponent(`Накладная №${invoiceNumber} клиента ${client?.client} ${client?.place}`)}`;
             
